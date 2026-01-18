@@ -19,20 +19,34 @@ function getRepoUrl(repoName) {
 
 // アカウントタイプを自動検出
 async function detectAccountType() {
+    console.log(`アカウントタイプを自動検出中: ${ACCOUNT_NAME}`);
+    
     // まず組織として試す
-    const orgResponse = await fetch(`${GITHUB_API_BASE}/orgs/${ACCOUNT_NAME}`);
-    if (orgResponse.ok) {
-        return 'org';
+    try {
+        const orgResponse = await fetch(`${GITHUB_API_BASE}/orgs/${ACCOUNT_NAME}`);
+        if (orgResponse.ok) {
+            console.log(`組織アカウントとして検出: ${ACCOUNT_NAME}`);
+            return 'org';
+        }
+        console.log(`組織として見つかりませんでした (ステータス: ${orgResponse.status})`);
+    } catch (error) {
+        console.log(`組織の検出中にエラー: ${error.message}`);
     }
     
     // 組織でなければユーザーとして試す
-    const userResponse = await fetch(`${GITHUB_API_BASE}/users/${ACCOUNT_NAME}`);
-    if (userResponse.ok) {
-        return 'user';
+    try {
+        const userResponse = await fetch(`${GITHUB_API_BASE}/users/${ACCOUNT_NAME}`);
+        if (userResponse.ok) {
+            console.log(`ユーザーアカウントとして検出: ${ACCOUNT_NAME}`);
+            return 'user';
+        }
+        console.log(`ユーザーとして見つかりませんでした (ステータス: ${userResponse.status})`);
+    } catch (error) {
+        console.log(`ユーザーの検出中にエラー: ${error.message}`);
     }
     
     // どちらでもない場合はエラー
-    throw new Error(`アカウント "${ACCOUNT_NAME}" が見つかりませんでした。`);
+    throw new Error(`アカウント "${ACCOUNT_NAME}" が見つかりませんでした。\n\nGitHubで https://github.com/${ACCOUNT_NAME} にアクセスして、アカウントが存在するか確認してください。`);
 }
 
 // リポジトリ情報を取得
