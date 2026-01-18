@@ -78,13 +78,19 @@ git push -u origin main
 
 ## カスタマイズ
 
-### 組織名の変更
+### アカウント名の変更
 
-`script.js` の `ORGANIZATION` 定数を変更してください：
+`script.js` の `ACCOUNT_NAME` 定数を変更してください：
 
 ```javascript
-const ORGANIZATION = 'your-organization-name';
+const ACCOUNT_NAME = 'your-account-name'; // ユーザーアカウントまたは組織名
 ```
+
+**注意:**
+
+- ユーザーアカウントと組織アカウントの両方に対応しています
+- アカウントタイプは自動的に検出されます（`ACCOUNT_TYPE = 'auto'`）
+- 手動で指定する場合は `'user'` または `'org'` を設定できます
 
 ### スタイルの変更
 

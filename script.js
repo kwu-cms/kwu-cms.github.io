@@ -1,6 +1,7 @@
 // GitHub API設定
-const ORGANIZATION = 'kwu-cms';
+const ACCOUNT_NAME = 'kwu-cms'; // ユーザーアカウントまたは組織名
 const GITHUB_API_BASE = 'https://api.github.com';
+const ACCOUNT_TYPE = 'auto'; // 'user', 'org', または 'auto'（自動検出）
 
 // グローバル変数
 let allRepos = [];
@@ -8,17 +9,52 @@ let filteredRepos = [];
 
 // GitHub PagesのURLを生成
 function getPagesUrl(repoName) {
-    return `https://${ORGANIZATION}.github.io/${repoName}`;
+    return `https://${ACCOUNT_NAME}.github.io/${repoName}`;
 }
 
 // GitHubリポジトリのURLを生成
 function getRepoUrl(repoName) {
-    return `https://github.com/${ORGANIZATION}/${repoName}`;
+    return `https://github.com/${ACCOUNT_NAME}/${repoName}`;
+}
+
+// アカウントタイプを自動検出
+async function detectAccountType() {
+    // まず組織として試す
+    const orgResponse = await fetch(`${GITHUB_API_BASE}/orgs/${ACCOUNT_NAME}`);
+    if (orgResponse.ok) {
+        return 'org';
+    }
+    
+    // 組織でなければユーザーとして試す
+    const userResponse = await fetch(`${GITHUB_API_BASE}/users/${ACCOUNT_NAME}`);
+    if (userResponse.ok) {
+        return 'user';
+    }
+    
+    // どちらでもない場合はエラー
+    throw new Error(`アカウント "${ACCOUNT_NAME}" が見つかりませんでした。`);
 }
 
 // リポジトリ情報を取得
 async function fetchRepositories() {
-    const apiUrl = `${GITHUB_API_BASE}/orgs/${ORGANIZATION}/repos?per_page=100&sort=updated&type=all`;
+    let accountType = ACCOUNT_TYPE;
+    
+    // 自動検出の場合
+    if (accountType === 'auto') {
+        try {
+            accountType = await detectAccountType();
+            console.log(`アカウントタイプを検出: ${accountType}`);
+        } catch (error) {
+            throw error;
+        }
+    }
+    
+    // APIエンドポイントを決定
+    const endpoint = accountType === 'org' 
+        ? `${GITHUB_API_BASE}/orgs/${ACCOUNT_NAME}/repos`
+        : `${GITHUB_API_BASE}/users/${ACCOUNT_NAME}/repos`;
+    
+    const apiUrl = `${endpoint}?per_page=100&sort=updated&type=all`;
     console.log(`GitHub APIを呼び出し中: ${apiUrl}`);
     
     try {
@@ -35,7 +71,7 @@ async function fetchRepositories() {
             let errorMessage = `HTTP error! status: ${response.status}`;
             
             if (response.status === 404) {
-                errorMessage = `組織 "${ORGANIZATION}" が見つかりませんでした。組織名を確認してください。`;
+                errorMessage = `アカウント "${ACCOUNT_NAME}" が見つかりませんでした。\n\n考えられる原因:\n1. アカウント名が間違っている可能性があります\n2. アカウントが存在しない可能性があります\n3. アカウントがプライベートで、アクセス権限がない可能性があります\n\n確認方法:\n- GitHubで https://github.com/${ACCOUNT_NAME} にアクセスしてアカウントが存在するか確認してください\n- アカウント名が異なる場合は、script.jsのACCOUNT_NAME定数を修正してください`;
             } else if (response.status === 403) {
                 if (rateLimitRemaining === '0') {
                     const resetTime = new Date(parseInt(rateLimitReset) * 1000);
@@ -296,8 +332,8 @@ async function init() {
             
             // デバッグ情報を追加（常に表示）
             message += `\n\n[詳細情報]\n`;
-            message += `組織名: ${ORGANIZATION}\n`;
-            message += `API URL: ${GITHUB_API_BASE}/orgs/${ORGANIZATION}/repos\n`;
+            message += `アカウント名: ${ACCOUNT_NAME}\n`;
+            message += `API URL: ${GITHUB_API_BASE}/users/${ACCOUNT_NAME}/repos または /orgs/${ACCOUNT_NAME}/repos\n`;
             if (error.status) {
                 message += `HTTPステータス: ${error.status}\n`;
             }
