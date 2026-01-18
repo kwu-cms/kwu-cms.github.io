@@ -170,12 +170,16 @@ main {
     color: #c53030;
     padding: 1.5rem;
     border-radius: 8px;
-    text-align: center;
+    text-align: left;
     margin: 2rem 0;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    line-height: 1.6;
 }
 
 .error p {
     margin-bottom: 1rem;
+    white-space: pre-line;
 }
 
 .retry-button {

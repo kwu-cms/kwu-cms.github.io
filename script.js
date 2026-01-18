@@ -18,14 +18,18 @@ function getRepoUrl(repoName) {
 
 // リポジトリ情報を取得
 async function fetchRepositories() {
+    const apiUrl = `${GITHUB_API_BASE}/orgs/${ORGANIZATION}/repos?per_page=100&sort=updated&type=all`;
+    console.log(`GitHub APIを呼び出し中: ${apiUrl}`);
+    
     try {
-        const response = await fetch(
-            `${GITHUB_API_BASE}/orgs/${ORGANIZATION}/repos?per_page=100&sort=updated&type=all`
-        );
+        const response = await fetch(apiUrl);
 
         // レート制限情報を取得
         const rateLimitRemaining = response.headers.get('X-RateLimit-Remaining');
         const rateLimitReset = response.headers.get('X-RateLimit-Reset');
+        
+        console.log(`レスポンスステータス: ${response.status}`);
+        console.log(`レート制限残り: ${rateLimitRemaining}`);
         
         if (!response.ok) {
             let errorMessage = `HTTP error! status: ${response.status}`;
@@ -52,10 +56,13 @@ async function fetchRepositories() {
 
         const repos = await response.json();
         
-        // レート制限が少ない場合は警告を表示
+        // レート制限情報をログに出力
+        console.log(`GitHub API レート制限: 残り${rateLimitRemaining}回`);
         if (rateLimitRemaining && parseInt(rateLimitRemaining) < 10) {
             console.warn(`GitHub APIのレート制限が残り${rateLimitRemaining}回です。`);
         }
+        
+        console.log(`取得したリポジトリ数: ${repos.length}個`);
         
         return repos.filter(repo => !repo.archived); // アーカイブされたリポジトリを除外
     } catch (error) {
@@ -287,20 +294,23 @@ async function init() {
         if (errorMessage) {
             let message = error.message || 'リポジトリの取得に失敗しました。';
             
-            // デバッグ情報を追加（開発環境の場合）
-            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-                message += `\n\n[デバッグ情報]\n`;
-                message += `組織名: ${ORGANIZATION}\n`;
-                message += `API URL: ${GITHUB_API_BASE}/orgs/${ORGANIZATION}/repos\n`;
-                if (error.status) {
-                    message += `HTTPステータス: ${error.status}\n`;
-                }
-                if (error.rateLimitRemaining !== undefined) {
-                    message += `レート制限残り: ${error.rateLimitRemaining}\n`;
-                }
+            // デバッグ情報を追加（常に表示）
+            message += `\n\n[詳細情報]\n`;
+            message += `組織名: ${ORGANIZATION}\n`;
+            message += `API URL: ${GITHUB_API_BASE}/orgs/${ORGANIZATION}/repos\n`;
+            if (error.status) {
+                message += `HTTPステータス: ${error.status}\n`;
+            }
+            if (error.rateLimitRemaining !== undefined) {
+                message += `レート制限残り: ${error.rateLimitRemaining}\n`;
+            }
+            if (error.rateLimitReset) {
+                const resetTime = new Date(parseInt(error.rateLimitReset) * 1000);
+                message += `レート制限リセット時刻: ${resetTime.toLocaleString('ja-JP')}\n`;
             }
             
-            errorMessage.textContent = message;
+            // HTMLとして表示（改行を反映）
+            errorMessage.innerHTML = message.replace(/\n/g, '<br>');
         }
         
         // リトライボタンを追加
