@@ -23,14 +23,49 @@ async function fetchRepositories() {
             `${GITHUB_API_BASE}/orgs/${ORGANIZATION}/repos?per_page=100&sort=updated&type=all`
         );
 
+        // レート制限情報を取得
+        const rateLimitRemaining = response.headers.get('X-RateLimit-Remaining');
+        const rateLimitReset = response.headers.get('X-RateLimit-Reset');
+        
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            let errorMessage = `HTTP error! status: ${response.status}`;
+            
+            if (response.status === 404) {
+                errorMessage = `組織 "${ORGANIZATION}" が見つかりませんでした。組織名を確認してください。`;
+            } else if (response.status === 403) {
+                if (rateLimitRemaining === '0') {
+                    const resetTime = new Date(parseInt(rateLimitReset) * 1000);
+                    errorMessage = `GitHub APIのレート制限に達しました。リセット時刻: ${resetTime.toLocaleString('ja-JP')}`;
+                } else {
+                    errorMessage = `アクセスが拒否されました。組織へのアクセス権限を確認してください。`;
+                }
+            } else if (response.status === 401) {
+                errorMessage = `認証が必要です。`;
+            }
+            
+            const error = new Error(errorMessage);
+            error.status = response.status;
+            error.rateLimitRemaining = rateLimitRemaining;
+            error.rateLimitReset = rateLimitReset;
+            throw error;
         }
 
         const repos = await response.json();
+        
+        // レート制限が少ない場合は警告を表示
+        if (rateLimitRemaining && parseInt(rateLimitRemaining) < 10) {
+            console.warn(`GitHub APIのレート制限が残り${rateLimitRemaining}回です。`);
+        }
+        
         return repos.filter(repo => !repo.archived); // アーカイブされたリポジトリを除外
     } catch (error) {
         console.error('Error fetching repositories:', error);
+        
+        // ネットワークエラーの場合
+        if (error.name === 'TypeError' || error.message.includes('Failed to fetch')) {
+            throw new Error('ネットワークエラーが発生しました。インターネット接続を確認してください。');
+        }
+        
         throw error;
     }
 }
@@ -246,6 +281,41 @@ async function init() {
     } catch (error) {
         loadingEl.style.display = 'none';
         errorEl.style.display = 'block';
+        
+        // エラーメッセージを詳細に表示
+        const errorMessage = errorEl.querySelector('p');
+        if (errorMessage) {
+            let message = error.message || 'リポジトリの取得に失敗しました。';
+            
+            // デバッグ情報を追加（開発環境の場合）
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                message += `\n\n[デバッグ情報]\n`;
+                message += `組織名: ${ORGANIZATION}\n`;
+                message += `API URL: ${GITHUB_API_BASE}/orgs/${ORGANIZATION}/repos\n`;
+                if (error.status) {
+                    message += `HTTPステータス: ${error.status}\n`;
+                }
+                if (error.rateLimitRemaining !== undefined) {
+                    message += `レート制限残り: ${error.rateLimitRemaining}\n`;
+                }
+            }
+            
+            errorMessage.textContent = message;
+        }
+        
+        // リトライボタンを追加
+        if (!errorEl.querySelector('.retry-button')) {
+            const retryButton = document.createElement('button');
+            retryButton.className = 'retry-button';
+            retryButton.textContent = '再試行';
+            retryButton.addEventListener('click', () => {
+                errorEl.style.display = 'none';
+                loadingEl.style.display = 'block';
+                init();
+            });
+            errorEl.appendChild(retryButton);
+        }
+        
         console.error('Failed to load repositories:', error);
     }
 }

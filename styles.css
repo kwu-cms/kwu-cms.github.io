@@ -156,8 +156,13 @@ main {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 .error {
@@ -167,6 +172,31 @@ main {
     border-radius: 8px;
     text-align: center;
     margin: 2rem 0;
+}
+
+.error p {
+    margin-bottom: 1rem;
+}
+
+.retry-button {
+    background-color: #c53030;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    margin-top: 1rem;
+}
+
+.retry-button:hover {
+    background-color: #9b2c2c;
+}
+
+.retry-button:active {
+    transform: scale(0.98);
 }
 
 .repos-grid {
