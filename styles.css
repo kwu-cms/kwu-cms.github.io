@@ -258,13 +258,22 @@ main {
 }
 
 .repo-language {
+    display: none;
+    /* 言語タグを非表示 */
+}
+
+.repo-screenshot {
+    width: 100%;
+    min-height: 200px;
     background-color: var(--bg-color);
-    color: var(--text-light);
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.875rem;
-    white-space: nowrap;
-    margin-left: 0.5rem;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.repo-screenshot img {
+    width: 100%;
+    height: auto;
+    display: block;
 }
 
 .repo-description {

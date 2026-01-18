@@ -46,33 +46,13 @@
 
 ## セットアップ
 
-### 1. リポジトリの作成
+詳細なセットアップ手順は [docs/DEPLOY.md](docs/DEPLOY.md) を参照してください。
 
-GitHubでリポジトリを作成します。推奨は `kwu-cms.github.io` です（組織名と同じ名前）。
+### クイックスタート
 
-### 2. ファイルのアップロード
-
-このリポジトリのファイルをGitHubにプッシュします：
-
-```bash
-git init
-git add .
-git commit -m "Initial commit"
-git branch -M main
-# リポジトリ名に応じてURLを変更してください
-git remote add origin https://github.com/kwu-cms/kwu-cms.github.io.git
-git push -u origin main
-```
-
-**注意:** リポジトリ名が `kwu-cms.github.io` 以外の場合は、上記のURLのリポジトリ名部分を変更してください。
-
-### 3. GitHub Pagesの有効化
-
-1. GitHubリポジトリの「Settings」タブに移動
-2. 左サイドバーから「Pages」を選択
-3. 「Source」で「Deploy from a branch」を選択
-4. 「Branch」で「main」ブランチと「/ (root)」フォルダを選択
-5. 「Save」をクリック
+1. **リポジトリの作成**: GitHubで `kwu-cms.github.io` リポジトリを作成
+2. **ファイルのアップロード**: ファイルをGitHubにプッシュ（[docs/PUSH_COMMANDS.md](docs/PUSH_COMMANDS.md) 参照）
+3. **GitHub Pagesの有効化**: Settings → Pages で公開設定
 
 数分後、`https://kwu-cms.github.io` でサイトにアクセスできるようになります。
 
@@ -104,11 +84,59 @@ const ACCOUNT_NAME = 'your-account-name'; // ユーザーアカウントまた�
 }
 ```
 
+## リポジトリの説明を追加する方法
+
+カードに表示される「説明なし」を変更するには、GitHubリポジトリの説明を設定してください：
+
+1. GitHubリポジトリのページにアクセス
+2. リポジトリ名の下にある「⚙️ Settings」アイコンをクリック
+3. 「Description」欄に説明を入力
+4. 「Save」をクリック
+
+説明を設定すると、カードに表示されます。また、説明がある場合はスクリーンショット画像も表示されます。
+
+### スクリーンショット画像の配置
+
+スクリーンショット画像を表示するには、以下のいずれかのパスに画像を配置してください：
+
+**GitHub Pagesサイトに配置:**
+
+- `/og-image.png`
+- `/screenshot.png`
+- `/preview.png`
+- `/images/og-image.png`
+- `/images/screenshot.png`
+
+**GitHubリポジトリに配置（推奨）:**
+
+- リポジトリのルートに `screenshot.png` または `og-image.png` を配置
+- または `images/` フォルダに配置
+
+最初に見つかった画像が表示されます。
+
+**詳細な手順は `SCREENSHOT_GUIDE.md` を参照してください。**
+
+## 📚 ドキュメント
+
+詳細なドキュメントは `docs/` フォルダにあります：
+
+- **[DEPLOY.md](docs/DEPLOY.md)** - デプロイ手順
+- **[PUSH_COMMANDS.md](docs/PUSH_COMMANDS.md)** - GitHubへのプッシュ手順
+- **[AUTHENTICATION.md](docs/AUTHENTICATION.md)** - 認証エラーの解決方法
+- **[TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** - トラブルシューティングガイド
+- **[CHECK_ORGANIZATION.md](docs/CHECK_ORGANIZATION.md)** - 組織名の確認方法
+- **[CACHE_CLEAR.md](docs/CACHE_CLEAR.md)** - キャッシュクリア方法
+- **[REPOSITORY_NAMES.md](docs/REPOSITORY_NAMES.md)** - リポジトリ名の候補リスト
+- **[SCREENSHOT_GUIDE.md](docs/SCREENSHOT_GUIDE.md)** - スクリーンショット画像の作成方法
+- **[SCREENSHOT_SCRIPT_README.md](docs/SCREENSHOT_SCRIPT_README.md)** - スクリーンショット自動生成スクリプトの使い方
+
 ## 注意事項
 
 - GitHub APIにはレート制限があります（認証なしで1時間あたり60リクエスト）
 - リポジトリが100個を超える場合は、ページネーションの実装を検討してください
 - GitHub PagesのURLは `https://kwu-cms.github.io/{リポジトリ名}` の形式を想定しています
+- 言語タグは非表示になっています（管理用のため）
+- PagesボタンがGitHubボタンより前に表示されます（Pagesを優先）
 
 ## ライセンス
 

@@ -87,11 +87,16 @@ async function fetchRepositories() {
             if (response.status === 404) {
                 errorMessage = `アカウント "${ACCOUNT_NAME}" が見つかりませんでした。\n\n考えられる原因:\n1. アカウント名が間違っている可能性があります\n2. アカウントが存在しない可能性があります\n3. アカウントがプライベートで、アクセス権限がない可能性があります\n\n確認方法:\n- GitHubで https://github.com/${ACCOUNT_NAME} にアクセスしてアカウントが存在するか確認してください\n- アカウント名が異なる場合は、script.jsのACCOUNT_NAME定数を修正してください`;
             } else if (response.status === 403) {
-                if (rateLimitRemaining === '0') {
-                    const resetTime = new Date(parseInt(rateLimitReset) * 1000);
-                    errorMessage = `GitHub APIのレート制限に達しました。リセット時刻: ${resetTime.toLocaleString('ja-JP')}`;
+                // レート制限の確認
+                if (rateLimitRemaining === '0' || parseInt(rateLimitRemaining) === 0) {
+                    const resetTime = rateLimitReset ? new Date(parseInt(rateLimitReset) * 1000) : null;
+                    if (resetTime) {
+                        errorMessage = `GitHub APIのレート制限に達しました。\n\nリセット時刻: ${resetTime.toLocaleString('ja-JP')}\n\nしばらく待ってから「再試行」ボタンをクリックしてください。`;
+                    } else {
+                        errorMessage = `GitHub APIのレート制限に達しました。\n\nしばらく待ってから「再試行」ボタンをクリックしてください。`;
+                    }
                 } else {
-                    errorMessage = `アクセスが拒否されました。組織へのアクセス権限を確認してください。`;
+                    errorMessage = `アクセスが拒否されました（403エラー）。\n\n考えられる原因:\n1. GitHub APIのレート制限（残り: ${rateLimitRemaining}回）\n2. アカウントへのアクセス権限がない\n3. ネットワークの問題\n\n「再試行」ボタンをクリックして再度お試しください。`;
                 }
             } else if (response.status === 401) {
                 errorMessage = `認証が必要です。`;
@@ -132,7 +137,6 @@ function createRepoCard(repo) {
     const card = document.createElement('div');
     card.className = 'repo-card';
     card.dataset.repoName = repo.name.toLowerCase();
-    card.dataset.repoLanguage = (repo.language || 'その他').toLowerCase();
     card.dataset.repoDescription = (repo.description || '').toLowerCase();
     
     // GitHub Pagesが有効かどうかを確認（descriptionにpagesのURLが含まれているか、または推測）
@@ -143,52 +147,84 @@ function createRepoCard(repo) {
         card.classList.add('has-pages');
     }
 
-    const description = repo.description || '説明なし';
-    const language = repo.language || 'その他';
-    const stars = repo.stargazers_count || 0;
+    const description = repo.description || '';
     const updated = new Date(repo.updated_at).toLocaleDateString('ja-JP');
+    const pagesUrl = getPagesUrl(repo.name);
+
+    // スクリーンショット画像のURL（複数のパスを試す）
+    // README画像も検索対象に含める
+    const screenshotUrls = [
+        `${pagesUrl}/og-image.png`,
+        `${pagesUrl}/screenshot.png`,
+        `${pagesUrl}/preview.png`,
+        `${pagesUrl}/images/og-image.png`,
+        `${pagesUrl}/images/screenshot.png`,
+        `${pagesUrl}/images/preview.png`,
+        `https://raw.githubusercontent.com/${ACCOUNT_NAME}/${repo.name}/main/screenshot.png`,
+        `https://raw.githubusercontent.com/${ACCOUNT_NAME}/${repo.name}/main/og-image.png`,
+        `https://raw.githubusercontent.com/${ACCOUNT_NAME}/${repo.name}/main/images/screenshot.png`,
+        `https://raw.githubusercontent.com/${ACCOUNT_NAME}/${repo.name}/main/images/og-image.png`
+    ];
+    const screenshotUrl = screenshotUrls[0]; // 最初のパスを使用
 
     card.innerHTML = `
+        ${description ? `<div class="repo-screenshot" style="background-image: url('${screenshotUrl}'); background-size: cover; background-position: center; height: 200px; border-radius: 8px; margin-bottom: 1rem; position: relative;">
+            <div class="screenshot-overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.3) 100%); border-radius: 8px;"></div>
+        </div>` : ''}
         <div class="repo-header">
             <h3 class="repo-title">
-                <a href="${getRepoUrl(repo.name)}" target="_blank" rel="noopener noreferrer">
+                <a href="${pagesUrl}" target="_blank" rel="noopener noreferrer">
                     ${escapeHtml(repo.name)}
                 </a>
             </h3>
-            <span class="repo-language">${escapeHtml(language)}</span>
         </div>
-        <p class="repo-description">${escapeHtml(description)}</p>
+        ${description ? `<p class="repo-description">${escapeHtml(description)}</p>` : ''}
         <div class="repo-meta">
-            <span>
-                <svg fill="currentColor" viewBox="0 0 16 16" width="16" height="16">
-                    <path d="M8 .25a.75.75 0 01.673.418l1.882 3.815 4.21.612a.75.75 0 01.416 1.279l-3.046 2.97.719 4.192a.75.75 0 01-1.088.791L8 12.347l-3.766 1.98a.75.75 0 01-1.088-.79l.72-4.194L.818 6.374a.75.75 0 01.416-1.28l4.21-.611L7.327.668A.75.75 0 018 .25z"/>
-                </svg>
-                ${stars}
-            </span>
             <span>更新: ${updated}</span>
         </div>
         <div class="repo-links">
+            <a href="${pagesUrl}" class="repo-link" target="_blank" rel="noopener noreferrer">
+                <svg fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M4.715 6.542L3.343 7.914a3 3 0 101.414 1.414l1.372-1.372A4 4 0 002.5 7.5v-1A1.5 1.5 0 014 5h1V4a4 4 0 014-4h1a1.5 1.5 0 011.5 1.5v1H12a4 4 0 014 4v1a1.5 1.5 0 01-1.5 1.5h-1v1a4 4 0 01-4 4h-1a1.5 1.5 0 01-1.5-1.5v-1H4a4 4 0 01-4-4v-1a1.5 1.5 0 011.5-1.5h1V7.5z"/>
+                </svg>
+                Pages
+            </a>
             <a href="${getRepoUrl(repo.name)}" class="repo-link secondary" target="_blank" rel="noopener noreferrer">
                 <svg fill="currentColor" viewBox="0 0 16 16">
                     <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0016 8c0-4.42-3.58-8-8-8z"/>
                 </svg>
                 GitHub
             </a>
-            <a href="${getPagesUrl(repo.name)}" class="repo-link" target="_blank" rel="noopener noreferrer">
-                <svg fill="currentColor" viewBox="0 0 16 16">
-                    <path d="M4.715 6.542L3.343 7.914a3 3 0 101.414 1.414l1.372-1.372A4 4 0 002.5 7.5v-1A1.5 1.5 0 014 5h1V4a4 4 0 014-4h1a1.5 1.5 0 011.5 1.5v1H12a4 4 0 014 4v1a1.5 1.5 0 01-1.5 1.5h-1v1a4 4 0 01-4 4h-1a1.5 1.5 0 01-1.5-1.5v-1H4a4 4 0 01-4-4v-1a1.5 1.5 0 011.5-1.5h1V7.5z"/>
-                </svg>
-                Pages
-            </a>
         </div>
     `;
 
-    // Pagesリンクのクリックイベントで404チェック（オプション）
-    const pagesLink = card.querySelector('.repo-link:not(.secondary)');
-    pagesLink.addEventListener('click', async (e) => {
-        // リンクは通常通り開くが、必要に応じて事前チェックも可能
-        // ここでは通常のリンク動作を許可
-    });
+    // スクリーンショット画像の読み込み（複数のパスを試す）
+    if (description) {
+        const screenshotEl = card.querySelector('.repo-screenshot');
+        if (screenshotEl) {
+            let currentIndex = 0;
+            const tryLoadImage = () => {
+                if (currentIndex >= screenshotUrls.length) {
+                    // すべてのパスを試しても見つからない場合は非表示
+                    screenshotEl.style.display = 'none';
+                    return;
+                }
+                
+                const img = new Image();
+                img.onload = () => {
+                    // 画像が見つかった
+                    screenshotEl.style.backgroundImage = `url('${screenshotUrls[currentIndex]}')`;
+                };
+                img.onerror = () => {
+                    // 次のパスを試す
+                    currentIndex++;
+                    tryLoadImage();
+                };
+                img.src = screenshotUrls[currentIndex];
+            };
+            tryLoadImage();
+        }
+    }
 
     return card;
 }
