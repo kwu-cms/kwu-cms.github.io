@@ -23,7 +23,7 @@ git push -u origin main
 プロンプトが表示されたら：
 
 - **Username**: `takawo` （またはGitHubのユーザー名）
-- **Password**: `<PAT_REMOVED>` （PATを貼り付け）
+- **Password**: `<ここにPATを貼り付け>` （Personal Access Tokenを入力）
 
 ## 🔐 より安全な方法（推奨）
 
