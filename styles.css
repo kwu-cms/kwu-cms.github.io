@@ -265,10 +265,14 @@ main {
 .repo-screenshot {
     width: 100%;
     min-height: 200px;
+    height: 200px;
     background-color: var(--bg-color);
     border: 1px solid var(--border-color);
     overflow: hidden;
+    border-radius: 8px;
+    position: relative;
 }
+
 
 .repo-screenshot img {
     width: 100%;
@@ -276,12 +280,43 @@ main {
     display: block;
 }
 
+.repo-description-container {
+    position: relative;
+    margin-bottom: 1rem;
+    flex: 1;
+}
+
 .repo-description {
     color: var(--text-light);
     font-size: 0.95rem;
-    margin-bottom: 1rem;
-    flex: 1;
     line-height: 1.5;
+    margin: 0;
+    padding-right: 2rem;
+}
+
+.edit-description-btn {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: none;
+    border: none;
+    color: var(--text-light);
+    cursor: pointer;
+    padding: 0.25rem;
+    opacity: 0.6;
+    transition: opacity 0.2s ease, color 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.edit-description-btn:hover {
+    opacity: 1;
+    color: var(--accent-color);
+}
+
+.repo-description-container:hover .edit-description-btn {
+    opacity: 0.8;
 }
 
 .repo-meta {
@@ -367,6 +402,144 @@ footer p {
     display: none;
 }
 
+/* 編集モーダル */
+.edit-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    padding: 1rem;
+}
+
+.edit-modal.active {
+    opacity: 1;
+}
+
+.edit-modal-content {
+    background-color: var(--card-bg);
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    max-width: 600px;
+    width: 100%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+}
+
+.edit-modal.active .edit-modal-content {
+    transform: scale(1);
+}
+
+.edit-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.edit-modal-header h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-color);
+    margin: 0;
+}
+
+.edit-modal-close {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    color: var(--text-light);
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.edit-modal-close:hover {
+    background-color: var(--border-color);
+    color: var(--text-color);
+}
+
+.edit-modal-body {
+    padding: 1.5rem;
+    flex: 1;
+    overflow-y: auto;
+}
+
+#edit-description-textarea {
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 0.95rem;
+    font-family: inherit;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    resize: vertical;
+    min-height: 120px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+#edit-description-textarea:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+}
+
+.edit-modal-footer {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    padding: 1.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.edit-modal-cancel,
+.edit-modal-save {
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.edit-modal-cancel {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    border: 2px solid var(--border-color);
+}
+
+.edit-modal-cancel:hover {
+    background-color: var(--border-color);
+}
+
+.edit-modal-save {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+.edit-modal-save:hover {
+    background-color: #2c5282;
+}
+
 @media (max-width: 768px) {
     header h1 {
         font-size: 2rem;
@@ -396,5 +569,16 @@ footer p {
 
     .controls {
         margin: 1.5rem 0;
+    }
+
+    .edit-modal-content {
+        max-width: 100%;
+        margin: 1rem;
+    }
+
+    .edit-modal-header,
+    .edit-modal-body,
+    .edit-modal-footer {
+        padding: 1rem;
     }
 }

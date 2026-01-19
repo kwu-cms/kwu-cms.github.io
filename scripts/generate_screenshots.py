@@ -35,9 +35,10 @@ except ImportError:
 # 設定
 ACCOUNT_NAME = 'kwu-cms'
 GITHUB_API_BASE = 'https://api.github.com'
-OUTPUT_DIR = 'screenshots'
-SCREENSHOT_WIDTH = 1200
-SCREENSHOT_HEIGHT = 630
+# 親ディレクトリのscreenshotsフォルダを使用
+OUTPUT_DIR = Path(__file__).parent.parent / 'screenshots'
+SCREENSHOT_WIDTH = 1920
+SCREENSHOT_HEIGHT = 1080
 WAIT_TIME = 3  # ページ読み込み待機時間（秒）
 
 # Personal Access Token（オプション）
@@ -221,6 +222,7 @@ def main():
     
     # コマンドライン引数をチェック
     skip_check = '--skip-check' in sys.argv or '--force' in sys.argv
+    force_overwrite = '--force' in sys.argv
     
     print("=" * 60)
     print("GitHub Pages スクリーンショット生成ツール")
@@ -229,10 +231,13 @@ def main():
     if skip_check:
         print("⚠️  存在確認をスキップします（--skip-check）")
         print()
+    if force_overwrite:
+        print("⚠️  既存のファイルを上書きします（--force）")
+        print()
     
     # 出力ディレクトリを作成
-    output_dir = Path(OUTPUT_DIR)
-    output_dir.mkdir(exist_ok=True)
+    output_dir = OUTPUT_DIR
+    output_dir.mkdir(exist_ok=True, parents=True)
     
     # リポジトリ一覧を取得
     repos = fetch_repositories()
@@ -264,11 +269,14 @@ def main():
         
         print(f"\n[{repo_name}]")
         
-        # 既にスクリーンショットが存在する場合はスキップ（オプション）
-        if output_path.exists():
+        # 既にスクリーンショットが存在する場合はスキップ（--forceオプションで上書き可能）
+        if output_path.exists() and not force_overwrite:
             print(f"  スキップ: 既に存在します ({output_path})")
+            print(f"  → 上書きする場合は --force オプションを使用してください")
             skip_count += 1
             continue
+        elif output_path.exists() and force_overwrite:
+            print(f"  上書き: 既存のファイルを更新します ({output_path})")
         
         # GitHub Pagesが存在するか確認（--skip-checkオプションでスキップ可能）
         if skip_check:

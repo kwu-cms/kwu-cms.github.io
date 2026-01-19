@@ -12,6 +12,7 @@ Pythonスクリプトを使用して、GitHub Pagesの各プロジェクトペ�
 ### 1. 必要なパッケージをインストール
 
 ```zsh
+cd scripts
 pip install -r requirements.txt
 ```
 
@@ -28,6 +29,7 @@ playwright install chromium
 **方法1: 環境変数として設定（推奨）**
 
 ```zsh
+cd scripts
 export GITHUB_TOKEN='your_personal_access_token_here'
 python generate_screenshots.py
 ```
@@ -65,7 +67,7 @@ source ~/.bash_profile
 
 **方法2: 警告を無視**
 
-警告は表示されますが、スクリプトの実行には影響しません。`python generate_screenshots.py` は正常に動作します。
+警告は表示されますが、スクリプトの実行には影響しません。`cd scripts && python generate_screenshots.py` は正常に動作します。
 
 **方法3: フルパスで実行**
 
@@ -86,6 +88,7 @@ source ~/.bash_profile
 ### 基本的な使い方
 
 ```bash
+cd scripts
 python generate_screenshots.py
 ```
 
@@ -166,6 +169,7 @@ WAIT_TIME = 5  # 5秒に変更
 ## 📊 実行例
 
 ```bash
+$ cd scripts
 $ python generate_screenshots.py
 ============================================================
 GitHub Pages スクリーンショット生成ツール

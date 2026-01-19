@@ -11,12 +11,18 @@
 ## 🔧 トラブルシューティング
 
 - **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - よくあるエラーと対処法
+- **[RATE_LIMIT_GUIDE.md](RATE_LIMIT_GUIDE.md)** - GitHub APIレート制限の回避方法
 - **[CHECK_ORGANIZATION.md](CHECK_ORGANIZATION.md)** - 組織名の確認方法
 - **[CACHE_CLEAR.md](CACHE_CLEAR.md)** - ブラウザキャッシュのクリア方法
 
 ## 📝 設定・カスタマイズ
 
 - **[REPOSITORY_NAMES.md](REPOSITORY_NAMES.md)** - リポジトリ名の候補リスト
+- **[FETCH_REPOSITORIES.md](FETCH_REPOSITORIES.md)** - リポジトリ情報の事前取得方法（レート制限回避）
+- **[EDIT_REPO_DESCRIPTION.md](EDIT_REPO_DESCRIPTION.md)** - GitHubリポジトリの説明を編集する方法（Webインターフェース）
+- **[GITHUB_REPO_DESCRIPTION.md](GITHUB_REPO_DESCRIPTION.md)** - リポジトリの説明を編集する方法（全方法）
+- **[DESCRIPTION_EDIT_GUIDE.md](DESCRIPTION_EDIT_GUIDE.md)** - このWebアプリでの説明編集方法
+- **[UPDATE_DESCRIPTIONS.md](UPDATE_DESCRIPTIONS.md)** - 一括更新スクリプトの使用方法
 
 ## 📸 スクリーンショット関連
 
@@ -34,7 +40,8 @@
 ### エラーが発生した場合
 
 1. [TROUBLESHOOTING.md](TROUBLESHOOTING.md) でエラーの種類を確認
-2. 必要に応じて [AUTHENTICATION.md](AUTHENTICATION.md) や [CACHE_CLEAR.md](CACHE_CLEAR.md) を参照
+2. 「アカウントが見つかりません」エラーが出る場合は [RATE_LIMIT_GUIDE.md](RATE_LIMIT_GUIDE.md) を参照
+3. 必要に応じて [AUTHENTICATION.md](AUTHENTICATION.md) や [CACHE_CLEAR.md](CACHE_CLEAR.md) を参照
 
 ### スクリーンショットを追加する場合
 
