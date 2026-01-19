@@ -13,9 +13,9 @@ let customDescriptions = {}; // カスタム説明の保存（localStorageから
 function initScreenshotMap() {
     // screenshotsフォルダ内の画像ファイル名からリポジトリ名を推測
     const screenshotFiles = [
-        'cms-exercise-newmedia-2025.png',
-        'cms-presentation-2025.png',
-        'digitai-fabrication-web-2025.png',
+        'cms-exercise-newmedia.png',
+        'cms-presentation.png',
+        'digitai-fabrication-web.png',
         'kwu-cms.github.io.png'
     ];
 
