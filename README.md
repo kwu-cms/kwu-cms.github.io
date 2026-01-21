@@ -116,6 +116,90 @@ const ACCOUNT_NAME = 'your-account-name'; // ユーザーアカウントまた�
 
 **詳細な手順は `SCREENSHOT_GUIDE.md` を参照してください。**
 
+## 新しいリポジトリを追加する方法
+
+新しいGitHub Pagesリポジトリをサイトに追加する場合は、以下の手順を実行してください：
+
+### 1. カスタム説明を追加
+
+`custom-descriptions.json` に新しいリポジトリの説明を追加します：
+
+```json
+{
+  "descriptions": {
+    "リポジトリ名": "リポジトリの説明文"
+  }
+}
+```
+
+**説明文のフォーマット例：**
+- `"2年次開講の学科必修科目「メディア表現発展演習Ⅰ」の4/13回で実施した「ルールに基づいて絵を描く」の学生作品を紹介するウェブページ"`
+- `"授業「プログラミングB（2025）」の成果を紹介するウェブページ"`
+- `"授業「フィジカルコンピューティングB」の課題として制作された、ノーコードアプリ「Glide」を用いたスマートフォンアプリを紹介するウェブページ"`
+
+### 2. スクリーンショットマッピングを追加
+
+`script.js` の `initScreenshotMap()` 関数内の `screenshotFiles` 配列に新しいスクリーンショットファイル名を追加します：
+
+```javascript
+const screenshotFiles = [
+    '既存のファイル名.png',
+    '新しいリポジトリ名.png'  // 追加
+];
+```
+
+### 3. スクリーンショットを生成
+
+Pythonスクリプトを使用してスクリーンショットを自動生成します：
+
+```bash
+cd scripts
+python3 generate_screenshots.py --repo リポジトリ名 --skip-check --force
+```
+
+**注意：** 初回実行時は、Playwrightのブラウザをインストールする必要があります：
+
+```bash
+playwright install chromium
+```
+
+または、Pythonから自動インストールを試みます（時間がかかる場合があります）。
+
+スクリーンショットは `screenshots/リポジトリ名.png` として保存されます。
+
+### 4. リポジトリ情報を更新
+
+GitHub APIから最新のリポジトリ情報を取得して `repositories.json` を更新します：
+
+```bash
+cd scripts
+python3 fetch_repositories.py
+```
+
+これにより、新しく追加されたリポジトリが `repositories.json` に含まれます。
+
+### 5. 変更をコミット・プッシュ
+
+すべての変更をGitにコミットしてプッシュします：
+
+```bash
+git add custom-descriptions.json script.js screenshots/リポジトリ名.png repositories.json
+git commit -m "リポジトリ名を追加"
+git push
+```
+
+### まとめ
+
+新しいリポジトリを追加する際の手順：
+
+1. ✅ `custom-descriptions.json` に説明を追加
+2. ✅ `script.js` のスクリーンショットマッピングに追加
+3. ✅ スクリーンショットを生成（`generate_screenshots.py`）
+4. ✅ リポジトリ情報を更新（`fetch_repositories.py`）
+5. ✅ 変更をコミット・プッシュ
+
+**重要：** `repositories.json` を更新しないと、新しいリポジトリが表示されません。GitHub APIから最新情報を取得するため、必ず `fetch_repositories.py` を実行してください。
+
 ## 📚 ドキュメント
 
 詳細なドキュメントは `docs/` フォルダにあります：

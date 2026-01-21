@@ -53,20 +53,20 @@ async function saveCustomDescriptions() {
             descriptions: customDescriptions,
             lastUpdated: new Date().toISOString()
         };
-        
+
         // まず、localStorageにもバックアップとして保存
         localStorage.setItem('customDescriptions', JSON.stringify(customDescriptions));
-        
+
         // JSONファイルの内容を表示（ユーザーが手動でコミットできるように）
         console.log('カスタム説明を更新しました。以下の内容をcustom-descriptions.jsonに保存してください:');
         console.log(JSON.stringify(data, null, 2));
-        
+
         // ファイルをダウンロードできるようにする
         downloadJSONFile(data, 'custom-descriptions.json');
-        
+
         // GitHub APIで更新するオプション（認証が必要）
         const useGitHubAPI = confirm('GitHub APIを使ってリポジトリの説明を直接更新しますか？\n\n「キャンセル」を選択した場合、JSONファイルをダウンロードして手動でコミットしてください。');
-        
+
         if (useGitHubAPI) {
             await updateDescriptionsViaGitHubAPI();
         }
@@ -92,12 +92,12 @@ function downloadJSONFile(data, filename) {
 // GitHub APIでリポジトリの説明を更新
 async function updateDescriptionsViaGitHubAPI() {
     const token = prompt('GitHub Personal Access Tokenを入力してください（repoスコープが必要です）:');
-    
+
     if (!token) {
         alert('トークンが入力されませんでした。JSONファイルをダウンロードして手動でコミットしてください。');
         return;
     }
-    
+
     // 各リポジトリの説明を更新
     const updatePromises = Object.entries(customDescriptions).map(async ([repoName, description]) => {
         try {
@@ -112,7 +112,7 @@ async function updateDescriptionsViaGitHubAPI() {
                     description: description
                 })
             });
-            
+
             if (response.ok) {
                 console.log(`[${repoName}] 説明を更新しました`);
                 return { repoName, success: true };
@@ -126,11 +126,11 @@ async function updateDescriptionsViaGitHubAPI() {
             return { repoName, success: false, error: e.message };
         }
     });
-    
+
     const results = await Promise.all(updatePromises);
     const successCount = results.filter(r => r.success).length;
     const failCount = results.filter(r => !r.success).length;
-    
+
     alert(`${successCount}個のリポジトリの説明を更新しました。${failCount > 0 ? `\n${failCount}個の更新に失敗しました。コンソールを確認してください。` : ''}`);
 }
 
@@ -178,20 +178,20 @@ function saveRateLimitInfo(resetTime) {
 function checkRateLimit(response) {
     const rateLimitRemaining = response.headers.get('X-RateLimit-Remaining');
     const rateLimitReset = response.headers.get('X-RateLimit-Reset');
-    
+
     if (response.status === 403 && (rateLimitRemaining === '0' || parseInt(rateLimitRemaining) === 0)) {
         // レート制限情報を保存
         if (rateLimitReset) {
             saveRateLimitInfo(rateLimitReset);
         }
-        
+
         const resetTime = rateLimitReset ? new Date(parseInt(rateLimitReset) * 1000) : null;
         const error = new Error(`GitHub APIのレート制限に達しました。\n\nリセット時刻: ${resetTime ? resetTime.toLocaleString('ja-JP') : '不明'}\n\nしばらく待ってから「再試行」ボタンをクリックしてください。`);
         error.isRateLimit = true;
         error.rateLimitReset = rateLimitReset;
         throw error;
     }
-    
+
     return { rateLimitRemaining, rateLimitReset };
 }
 
@@ -217,12 +217,12 @@ async function detectAccountType() {
     // まず組織として試す
     try {
         const orgResponse = await fetch(`${GITHUB_API_BASE}/orgs/${ACCOUNT_NAME}`);
-        
+
         // レート制限をチェック
         if (orgResponse.status === 403) {
             checkRateLimit(orgResponse);
         }
-        
+
         if (orgResponse.ok) {
             console.log(`組織アカウントとして検出: ${ACCOUNT_NAME}`);
             return 'org';
@@ -238,12 +238,12 @@ async function detectAccountType() {
     // 組織でなければユーザーとして試す
     try {
         const userResponse = await fetch(`${GITHUB_API_BASE}/users/${ACCOUNT_NAME}`);
-        
+
         // レート制限をチェック
         if (userResponse.status === 403) {
             checkRateLimit(userResponse);
         }
-        
+
         if (userResponse.ok) {
             console.log(`ユーザーアカウントとして検出: ${ACCOUNT_NAME}`);
             return 'user';
@@ -263,10 +263,14 @@ async function detectAccountType() {
 // リポジトリ情報をJSONファイルから読み込み
 async function loadRepositoriesFromJSON() {
     try {
-        const response = await fetch('repositories.json');
+        // キャッシュを回避するためにタイムスタンプをクエリパラメータに追加
+        const cacheBuster = `?t=${Date.now()}`;
+        const response = await fetch(`repositories.json${cacheBuster}`, {
+            cache: 'no-cache'
+        });
         if (response.ok) {
             const data = await response.json();
-            console.log(`repositories.jsonから読み込みました (取得時刻: ${data.fetched_at || '不明'})`);
+            console.log(`repositories.jsonから読み込みました (取得時刻: ${data.fetched_at || '不明'}, リポジトリ数: ${data.repositories?.length || 0}個)`);
             return data.repositories || [];
         }
     } catch (e) {
@@ -288,7 +292,7 @@ async function fetchRepositories() {
 
     // JSONファイルがない場合、GitHub APIから取得
     console.log('GitHub APIからリポジトリ情報を取得します...');
-    
+
     let accountType = ACCOUNT_TYPE;
 
     // 自動検出の場合
@@ -393,12 +397,12 @@ function createRepoCard(repo) {
     // スクリーンショット画像のURL（複数のパスを試す）
     // ローカルのscreenshotsフォルダを最優先で試す
     const screenshotUrls = [];
-    
+
     // ローカルのscreenshotsフォルダの画像を最優先
     if (screenshotMap[repo.name]) {
         screenshotUrls.push(screenshotMap[repo.name]);
     }
-    
+
     // GitHub Pagesの画像
     screenshotUrls.push(
         `${pagesUrl}/og-image.png`,
@@ -408,7 +412,7 @@ function createRepoCard(repo) {
         `${pagesUrl}/images/screenshot.png`,
         `${pagesUrl}/images/preview.png`
     );
-    
+
     // GitHubリポジトリの画像
     screenshotUrls.push(
         `https://raw.githubusercontent.com/${ACCOUNT_NAME}/${repo.name}/main/screenshot.png`,
@@ -629,7 +633,7 @@ async function init() {
 
     // まずJSONファイルの存在を確認
     const reposFromJSON = await loadRepositoriesFromJSON();
-    
+
     // JSONファイルがない場合のみレート制限をチェック
     if (!reposFromJSON || reposFromJSON.length === 0) {
         const rateLimitCheck = isRateLimited();
@@ -642,7 +646,7 @@ async function init() {
                 const message = `GitHub APIのレート制限中です。\n\nリセット時刻: ${resetTime.toLocaleString('ja-JP')}\n\nリセット時刻まで待ってから「再試行」ボタンをクリックしてください。\n\n💡 ヒント: repositories.jsonファイルを作成すると、レート制限を回避できます。\n\n[詳細情報]\nアカウント名: ${ACCOUNT_NAME}\nAPI URL: ${GITHUB_API_BASE}/users/${ACCOUNT_NAME}/repos または /orgs/${ACCOUNT_NAME}/repos`;
                 errorMessage.innerHTML = message.replace(/\n/g, '<br>');
             }
-            
+
             // リトライボタンを追加
             if (!errorEl.querySelector('.retry-button')) {
                 const retryButton = document.createElement('button');
@@ -691,7 +695,7 @@ async function init() {
                     saveRateLimitInfo(error.rateLimitReset);
                 }
             }
-            
+
             // デバッグ情報を追加（常に表示）
             message += `\n\n[詳細情報]\n`;
             message += `アカウント名: ${ACCOUNT_NAME}\n`;
@@ -706,7 +710,7 @@ async function init() {
                 const resetTime = new Date(parseInt(error.rateLimitReset) * 1000);
                 message += `レート制限リセット時刻: ${resetTime.toLocaleString('ja-JP')}\n`;
             }
-            
+
             // レート制限の場合は追加の説明
             if (error.isRateLimit) {
                 message += `\n💡 ヒント: レート制限を回避するには、GitHub Personal Access Tokenを使用してください。`;
