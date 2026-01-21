@@ -5,7 +5,6 @@ const ACCOUNT_TYPE = 'auto'; // 'user', 'org', または 'auto'（自動検出�
 
 // グローバル変数
 let allRepos = [];
-let filteredRepos = [];
 let screenshotMap = {}; // スクリーンショット画像のマッピング（リポジトリ名 -> 画像パス）
 let customDescriptions = {}; // カスタム説明の保存（localStorageから読み込み）
 
@@ -16,7 +15,9 @@ function initScreenshotMap() {
         'cms-exercise-newmedia.png',
         'cms-presentation.png',
         'digitai-fabrication-web.png',
-        'kwu-cms.github.io.png'
+        'kwu-cms.github.io.png',
+        'programming-b-web.png',
+        'app-dev-glide.png'
     ];
 
     screenshotFiles.forEach(filename => {
@@ -577,8 +578,8 @@ async function saveDescription(repoName, description) {
         }
     }
 
-    // フィルタを再適用（説明が変更されたため）
-    applyFilters();
+    // 表示を更新（説明が変更されたため）
+    displayRepos(allRepos);
 }
 
 // HTMLエスケープ
@@ -588,75 +589,14 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// 言語リストを取得
-function getLanguages(repos) {
-    const languages = new Set();
-    repos.forEach(repo => {
-        const lang = repo.language || 'その他';
-        languages.add(lang);
-    });
-    return Array.from(languages).sort();
-}
-
-// 言語フィルタのオプションを生成
-function populateLanguageFilter(repos) {
-    const languageFilter = document.getElementById('language-filter');
-    const languages = getLanguages(repos);
-
-    languages.forEach(lang => {
-        const option = document.createElement('option');
-        option.value = lang;
-        option.textContent = lang;
-        languageFilter.appendChild(option);
-    });
-}
-
-// リポジトリをソート
-function sortRepos(repos, sortBy) {
-    const sorted = [...repos];
-    switch (sortBy) {
-        case 'name':
-            sorted.sort((a, b) => a.name.localeCompare(b.name, 'ja'));
-            break;
-        case 'stars':
-            sorted.sort((a, b) => (b.stargazers_count || 0) - (a.stargazers_count || 0));
-            break;
-        case 'updated':
-        default:
-            sorted.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
-            break;
-    }
-    return sorted;
-}
-
-// リポジトリをフィルタリング
-function filterRepos(repos, searchTerm, languageFilter) {
-    return repos.filter(repo => {
-        // カスタム説明があればそれを使用、なければGitHubの説明を使用
-        const description = customDescriptions[repo.name] || repo.description || '';
-        
-        const matchesSearch = !searchTerm ||
-            repo.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            description.toLowerCase().includes(searchTerm.toLowerCase());
-
-        const matchesLanguage = !languageFilter ||
-            (repo.language || 'その他') === languageFilter;
-
-        return matchesSearch && matchesLanguage;
-    });
-}
 
 // リポジトリを表示
 function displayRepos(repos) {
     const reposContainer = document.getElementById('repos-container');
     const emptyResults = document.getElementById('empty-results');
-    const repoCount = document.getElementById('repo-count');
 
     // 既存のカードをクリア
     reposContainer.innerHTML = '';
-
-    // 統計情報を更新
-    repoCount.textContent = repos.length;
 
     if (repos.length === 0) {
         emptyResults.style.display = 'block';
@@ -667,27 +607,14 @@ function displayRepos(repos) {
     emptyResults.style.display = 'none';
     reposContainer.style.display = 'grid';
 
+    // 更新日時順にソート
+    const sortedRepos = [...repos].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+
     // カードを生成して追加
-    repos.forEach(repo => {
+    sortedRepos.forEach(repo => {
         const card = createRepoCard(repo);
         reposContainer.appendChild(card);
     });
-}
-
-// 検索とフィルタを適用
-function applyFilters() {
-    const searchTerm = document.getElementById('search-input').value.trim();
-    const languageFilter = document.getElementById('language-filter').value;
-    const sortBy = document.getElementById('sort-filter').value;
-
-    // フィルタリング
-    filteredRepos = filterRepos(allRepos, searchTerm, languageFilter);
-
-    // ソート
-    filteredRepos = sortRepos(filteredRepos, sortBy);
-
-    // 表示
-    displayRepos(filteredRepos);
 }
 
 // ページを初期化
@@ -698,7 +625,6 @@ async function init() {
 
     const loadingEl = document.getElementById('loading');
     const errorEl = document.getElementById('error');
-    const controlsEl = document.getElementById('controls');
     const reposContainer = document.getElementById('repos-container');
 
     // まずJSONファイルの存在を確認
@@ -745,22 +671,9 @@ async function init() {
 
         // グローバル変数に保存
         allRepos = repos;
-        filteredRepos = repos;
 
-        // コントロールを表示
-        controlsEl.style.display = 'flex';
-
-        // 言語フィルタを設定
-        populateLanguageFilter(repos);
-
-        // 初期表示（更新日時でソート）
-        filteredRepos = sortRepos(filteredRepos, 'updated');
-        displayRepos(filteredRepos);
-
-        // イベントリスナーを設定
-        document.getElementById('search-input').addEventListener('input', applyFilters);
-        document.getElementById('language-filter').addEventListener('change', applyFilters);
-        document.getElementById('sort-filter').addEventListener('change', applyFilters);
+        // リポジトリを表示（更新日時順にソート）
+        displayRepos(repos);
 
     } catch (error) {
         loadingEl.style.display = 'none';

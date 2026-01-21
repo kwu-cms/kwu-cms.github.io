@@ -224,6 +224,13 @@ def main():
     skip_check = '--skip-check' in sys.argv or '--force' in sys.argv
     force_overwrite = '--force' in sys.argv
     
+    # 特定のリポジトリ名を指定（例: --repo programming-b-web）
+    target_repo = None
+    if '--repo' in sys.argv:
+        repo_index = sys.argv.index('--repo')
+        if repo_index + 1 < len(sys.argv):
+            target_repo = sys.argv[repo_index + 1]
+    
     print("=" * 60)
     print("GitHub Pages スクリーンショット生成ツール")
     print("=" * 60)
@@ -234,17 +241,54 @@ def main():
     if force_overwrite:
         print("⚠️  既存のファイルを上書きします（--force）")
         print()
+    if target_repo:
+        print(f"🎯 対象リポジトリ: {target_repo}")
+        print()
     
     # 出力ディレクトリを作成
     output_dir = OUTPUT_DIR
     output_dir.mkdir(exist_ok=True, parents=True)
     
     # リポジトリ一覧を取得
-    repos = fetch_repositories()
+    if target_repo:
+        # 特定のリポジトリのみを処理する場合
+        repos = [{'name': target_repo}]
+    else:
+        repos = fetch_repositories()
     
     # 使用可能な方法を確認
-    use_playwright = PLAYWRIGHT_AVAILABLE
-    use_selenium = SELENIUM_AVAILABLE and not PLAYWRIGHT_AVAILABLE
+    # Playwrightが利用可能でブラウザがインストールされているか確認
+    use_playwright = False
+    if PLAYWRIGHT_AVAILABLE:
+        try:
+            from playwright.sync_api import sync_playwright
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                browser.close()
+            use_playwright = True
+        except Exception as e:
+            print(f"  Playwrightのブラウザがインストールされていないようです。")
+            print(f"  自動インストールを試みます...")
+            try:
+                import subprocess
+                result = subprocess.run(['python3', '-m', 'playwright', 'install', 'chromium'], 
+                                      capture_output=True, text=True, timeout=300)
+                if result.returncode == 0:
+                    print(f"  ✓ Playwrightのブラウザをインストールしました")
+                    # 再度試す
+                    with sync_playwright() as p:
+                        browser = p.chromium.launch(headless=True)
+                        browser.close()
+                    use_playwright = True
+                else:
+                    print(f"  ✗ インストールに失敗しました: {result.stderr}")
+                    print(f"  手動で実行してください: playwright install chromium")
+            except Exception as install_error:
+                print(f"  ✗ 自動インストールに失敗しました: {install_error}")
+                print(f"  手動で実行してください: playwright install chromium")
+            use_playwright = False
+    
+    use_selenium = SELENIUM_AVAILABLE and not use_playwright
     
     if not use_playwright and not use_selenium:
         print("\nエラー: PlaywrightまたはSeleniumがインストールされていません。")
@@ -286,7 +330,7 @@ def main():
             if not pages_exists:
                 print(f"  スキップ: GitHub Pagesが存在しないか、アクセスできません ({pages_url})")
                 print(f"  → 手動でブラウザで確認してください。存在する場合は、--skip-check オプションでスキップできます。")
-                print(f"  → 例: python generate_screenshots.py --skip-check")
+                print(f"  → 例: python generate_screenshots.py --repo {repo_name} --skip-check")
                 skip_count += 1
                 continue
         
