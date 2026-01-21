@@ -213,6 +213,7 @@ git push
 - **[REPOSITORY_NAMES.md](docs/REPOSITORY_NAMES.md)** - リポジトリ名の候補リスト
 - **[SCREENSHOT_GUIDE.md](docs/SCREENSHOT_GUIDE.md)** - スクリーンショット画像の作成方法
 - **[SCREENSHOT_SCRIPT_README.md](docs/SCREENSHOT_SCRIPT_README.md)** - スクリーンショット自動生成スクリプトの使い方
+- **[STYLE_GUIDE.md](docs/STYLE_GUIDE.md)** - 学科共通ウェブページスタイルガイド
 
 ## 注意事項
 

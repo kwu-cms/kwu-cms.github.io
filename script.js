@@ -7,6 +7,8 @@ const ACCOUNT_TYPE = 'auto'; // 'user', 'org', または 'auto'（自動検出�
 let allRepos = [];
 let screenshotMap = {}; // スクリーンショット画像のマッピング（リポジトリ名 -> 画像パス）
 let customDescriptions = {}; // カスタム説明の保存（localStorageから読み込み）
+let courseInfoMap = {}; // リポジトリ名 -> 授業情報のマッピング
+let courseData = {}; // 授業データ全体
 
 // スクリーンショット画像のマッピングを初期化
 function initScreenshotMap() {
@@ -33,15 +35,58 @@ async function loadCustomDescriptions() {
         const response = await fetch('custom-descriptions.json');
         if (response.ok) {
             const data = await response.json();
-            customDescriptions = data.descriptions || {};
+            // 新しい構造（courses + other）と旧構造（descriptions）の両方に対応
+            if (data.courses && data.other) {
+                // 新しい構造: coursesとotherからリポジトリ名をキーとしたマップを作成
+                customDescriptions = {};
+                courseInfoMap = {};
+                courseData = data.courses || {};
+
+                // coursesから取得
+                if (data.courses) {
+                    Object.entries(data.courses).forEach(([courseName, courseInfo]) => {
+                        if (courseInfo.repositories) {
+                            Object.entries(courseInfo.repositories).forEach(([repoName, description]) => {
+                                customDescriptions[repoName] = description;
+                                // リポジトリ名から授業情報を取得できるようにマッピング
+                                courseInfoMap[repoName] = {
+                                    courseName: courseName,
+                                    summary: courseInfo.summary || null,
+                                    year: courseInfo.year,
+                                    type: courseInfo.type,
+                                    description: description
+                                };
+                            });
+                        }
+                    });
+                }
+                // otherから取得
+                if (data.other) {
+                    Object.assign(customDescriptions, data.other);
+                }
+            } else if (data.descriptions) {
+                // 旧構造: 後方互換性のため
+                customDescriptions = data.descriptions;
+                courseInfoMap = {};
+                courseData = {};
+            } else {
+                customDescriptions = {};
+                courseInfoMap = {};
+                courseData = {};
+            }
             console.log('カスタム説明を読み込みました:', customDescriptions);
+            console.log('授業情報マップ:', courseInfoMap);
         } else {
             console.log('custom-descriptions.jsonが見つかりません。新規作成します。');
             customDescriptions = {};
+            courseInfoMap = {};
+            courseData = {};
         }
     } catch (e) {
         console.error('カスタム説明の読み込みに失敗しました:', e);
         customDescriptions = {};
+        courseInfoMap = {};
+        courseData = {};
     }
 }
 
@@ -380,6 +425,17 @@ function createRepoCard(repo) {
     card.className = 'repo-card';
     card.dataset.repoName = repo.name.toLowerCase();
     card.dataset.repoDescription = (repo.description || '').toLowerCase();
+    
+    // カード全体をクリック可能にする（GitHub Pagesへのリンク）
+    const pagesUrl = getPagesUrl(repo.name);
+    card.style.cursor = 'pointer';
+    card.addEventListener('click', (e) => {
+        // リンクやボタンがクリックされた場合はカードのクリックイベントを無視
+        if (e.target.closest('a') || e.target.closest('button')) {
+            return;
+        }
+        window.open(pagesUrl, '_blank', 'noopener,noreferrer');
+    });
 
     // GitHub Pagesが有効かどうかを確認（descriptionにpagesのURLが含まれているか、または推測）
     // 実際には、各リポジトリのpages設定を確認する必要がありますが、
@@ -392,7 +448,22 @@ function createRepoCard(repo) {
     // カスタム説明があればそれを使用、なければGitHubの説明を使用
     const description = customDescriptions[repo.name] || repo.description || '';
     const updated = new Date(repo.updated_at).toLocaleDateString('ja-JP');
-    const pagesUrl = getPagesUrl(repo.name);
+
+    // 授業情報を取得（リポジトリ名から授業名、年次、科目種別を取得）
+    const courseInfo = courseInfoMap[repo.name];
+    const courseName = courseInfo ? courseInfo.courseName : repo.name;
+    const courseSummary = courseInfo ? courseInfo.summary : null;
+    const courseYear = courseInfo ? courseInfo.year : null;
+    const courseType = courseInfo ? courseInfo.type : null;
+
+    // タグを生成
+    let tagsHtml = '';
+    if (courseYear !== null) {
+        tagsHtml += `<span class="course-tag course-tag-year">${courseYear}年次開講科目</span>`;
+    }
+    if (courseType) {
+        tagsHtml += `<span class="course-tag course-tag-type">${courseType}科目</span>`;
+    }
 
     // スクリーンショット画像のURL（複数のパスを試す）
     // ローカルのscreenshotsフォルダを最優先で試す
@@ -424,37 +495,26 @@ function createRepoCard(repo) {
     card.innerHTML = `
         <div class="repo-screenshot" data-repo-name="${repo.name}" style="background-color: var(--bg-color); background-size: cover; background-position: center; height: 200px; border-radius: 8px; margin-bottom: 1rem; position: relative; min-height: 200px;">
             <div class="screenshot-overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.3) 100%); border-radius: 8px;"></div>
+            <div class="repo-header-overlay">
+                <h3 class="repo-title">
+                    <a href="${pagesUrl}" target="_blank" rel="noopener noreferrer">
+                        ${escapeHtml(courseName)}
+                    </a>
+                </h3>
+            </div>
         </div>
         <div class="repo-header">
-            <h3 class="repo-title">
-                <a href="${pagesUrl}" target="_blank" rel="noopener noreferrer">
-                    ${escapeHtml(repo.name)}
-                </a>
-            </h3>
+            ${courseSummary ? `<p class="course-summary">${escapeHtml(courseSummary)}</p>` : ''}
+            ${tagsHtml ? `<div class="course-tags">${tagsHtml}</div>` : ''}
         </div>
-        <div class="repo-description-container">
-            ${description ? `<p class="repo-description" data-repo-name="${repo.name}">${escapeHtml(description)}</p>` : `<p class="repo-description" data-repo-name="${repo.name}"></p>`}
-            <button class="edit-description-btn" data-repo-name="${repo.name}" title="説明を編集">
-                <svg fill="currentColor" viewBox="0 0 16 16" width="16" height="16">
-                    <path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708l-3-3zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207l6.5-6.5zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.499.499 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11l.178-.178z"/>
-                </svg>
-            </button>
+        <div class="course-description-container">
+            ${description ? `<p class="course-description" data-repo-name="${repo.name}">${escapeHtml(description)}</p>` : `<p class="course-description" data-repo-name="${repo.name}"></p>`}
         </div>
         <div class="repo-meta">
             <span>更新: ${updated}</span>
-        </div>
-        <div class="repo-links">
-            <a href="${pagesUrl}" class="repo-link" target="_blank" rel="noopener noreferrer">
-                <svg fill="currentColor" viewBox="0 0 16 16">
-                    <path d="M4.715 6.542L3.343 7.914a3 3 0 101.414 1.414l1.372-1.372A4 4 0 002.5 7.5v-1A1.5 1.5 0 014 5h1V4a4 4 0 014-4h1a1.5 1.5 0 011.5 1.5v1H12a4 4 0 014 4v1a1.5 1.5 0 01-1.5 1.5h-1v1a4 4 0 01-4 4h-1a1.5 1.5 0 01-1.5-1.5v-1H4a4 4 0 01-4-4v-1a1.5 1.5 0 011.5-1.5h1V7.5z"/>
-                </svg>
-                Pages
-            </a>
-            <a href="${getRepoUrl(repo.name)}" class="repo-link secondary" target="_blank" rel="noopener noreferrer">
-                <svg fill="currentColor" viewBox="0 0 16 16">
-                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0016 8c0-4.42-3.58-8-8-8z"/>
-                </svg>
-                GitHub
+            <a href="${pagesUrl}" class="course-link" target="_blank" rel="noopener noreferrer">
+                <span>授業紹介ページ</span>
+                <i class="fas fa-external-link-alt"></i>
             </a>
         </div>
     `;
@@ -495,95 +555,7 @@ function createRepoCard(repo) {
         tryLoadImage();
     }
 
-    // 説明編集ボタンのイベントリスナーを追加
-    const editBtn = card.querySelector('.edit-description-btn');
-    if (editBtn) {
-        editBtn.addEventListener('click', () => {
-            showEditDescriptionModal(repo.name, description);
-        });
-    }
-
     return card;
-}
-
-// 説明編集モーダルを表示
-function showEditDescriptionModal(repoName, currentDescription) {
-    // モーダルのHTMLを作成
-    const modal = document.createElement('div');
-    modal.className = 'edit-modal';
-    modal.innerHTML = `
-        <div class="edit-modal-content">
-            <div class="edit-modal-header">
-                <h2>説明を編集: ${escapeHtml(repoName)}</h2>
-                <button class="edit-modal-close">&times;</button>
-            </div>
-            <div class="edit-modal-body">
-                <textarea id="edit-description-textarea" rows="5" placeholder="リポジトリの説明を入力してください...">${escapeHtml(currentDescription)}</textarea>
-            </div>
-            <div class="edit-modal-footer">
-                <button class="edit-modal-cancel">キャンセル</button>
-                <button class="edit-modal-save">保存</button>
-            </div>
-        </div>
-    `;
-
-    document.body.appendChild(modal);
-
-    // モーダルを表示
-    setTimeout(() => modal.classList.add('active'), 10);
-
-    // イベントリスナー
-    const closeModal = () => {
-        modal.classList.remove('active');
-        setTimeout(() => modal.remove(), 300);
-    };
-
-    modal.querySelector('.edit-modal-close').addEventListener('click', closeModal);
-    modal.querySelector('.edit-modal-cancel').addEventListener('click', closeModal);
-    modal.querySelector('.edit-modal-save').addEventListener('click', async () => {
-        const newDescription = document.getElementById('edit-description-textarea').value.trim();
-        await saveDescription(repoName, newDescription);
-        closeModal();
-    });
-
-    // 背景クリックで閉じる
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            closeModal();
-        }
-    });
-
-    // テキストエリアにフォーカス
-    document.getElementById('edit-description-textarea').focus();
-}
-
-// 説明を保存
-async function saveDescription(repoName, description) {
-    if (description) {
-        customDescriptions[repoName] = description;
-    } else {
-        delete customDescriptions[repoName];
-    }
-    await saveCustomDescriptions();
-
-    // 表示を更新
-    const descriptionEl = document.querySelector(`.repo-description[data-repo-name="${repoName}"]`);
-    if (descriptionEl) {
-        if (description) {
-            descriptionEl.textContent = description;
-            descriptionEl.parentElement.style.display = '';
-        } else {
-            descriptionEl.textContent = '';
-            // 元のGitHubの説明を表示
-            const repo = allRepos.find(r => r.name === repoName);
-            if (repo && repo.description) {
-                descriptionEl.textContent = repo.description;
-            }
-        }
-    }
-
-    // 表示を更新（説明が変更されたため）
-    displayRepos(allRepos);
 }
 
 // HTMLエスケープ
