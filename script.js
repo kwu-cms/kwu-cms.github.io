@@ -19,7 +19,9 @@ function initScreenshotMap() {
         'digitai-fabrication-web.png',
         'kwu-cms.github.io.png',
         'programming-b-web.png',
-        'app-dev-glide.png'
+        'app-dev-glide.png',
+        'new-media-web.png',
+        'ai-image-generator.png'
     ];
 
     screenshotFiles.forEach(filename => {
