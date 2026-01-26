@@ -116,8 +116,31 @@ def fetch_repositories() -> List[Dict]:
     return repos
 
 
-def get_pages_url(repo_name: str) -> str:
-    """GitHub PagesのURLを生成"""
+def load_repositories_from_json() -> Dict[str, Dict]:
+    """repositories.jsonからリポジトリ情報を読み込み"""
+    json_path = Path(__file__).parent.parent / 'repositories.json'
+    if json_path.exists():
+        try:
+            with open(json_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                repos = data.get('repositories', [])
+                # リポジトリ名をキーとした辞書を作成
+                return {repo['name']: repo for repo in repos}
+        except Exception as e:
+            print(f"  repositories.jsonの読み込みに失敗: {e}")
+    return {}
+
+def get_pages_url(repo_name: str, repos_dict: Dict[str, Dict] = None) -> str:
+    """GitHub PagesのURLを取得（repositories.jsonから優先的に取得）"""
+    if repos_dict and repo_name in repos_dict:
+        repo = repos_dict[repo_name]
+        # pages_urlがあればそれを使用
+        if repo.get('pages_url'):
+            return repo['pages_url']
+        # has_pagesがtrueの場合は標準URLを生成
+        if repo.get('has_pages'):
+            return f"https://{ACCOUNT_NAME}.github.io/{repo_name}"
+    # フォールバック: 標準的なURLを生成
     return f"https://{ACCOUNT_NAME}.github.io/{repo_name}"
 
 
@@ -249,12 +272,23 @@ def main():
     output_dir = OUTPUT_DIR
     output_dir.mkdir(exist_ok=True, parents=True)
     
+    # repositories.jsonからリポジトリ情報を読み込み（pages_urlを含む）
+    repos_dict = load_repositories_from_json()
+    
     # リポジトリ一覧を取得
     if target_repo:
         # 特定のリポジトリのみを処理する場合
-        repos = [{'name': target_repo}]
+        if repos_dict and target_repo in repos_dict:
+            repos = [repos_dict[target_repo]]
+        else:
+            repos = [{'name': target_repo}]
     else:
-        repos = fetch_repositories()
+        # repositories.jsonから読み込むか、APIから取得
+        if repos_dict:
+            repos = list(repos_dict.values())
+            print(f"repositories.jsonから {len(repos)}個のリポジトリを読み込みました")
+        else:
+            repos = fetch_repositories()
     
     # 使用可能な方法を確認
     # Playwrightが利用可能でブラウザがインストールされているか確認
@@ -308,7 +342,7 @@ def main():
     
     for repo in repos:
         repo_name = repo['name']
-        pages_url = get_pages_url(repo_name)
+        pages_url = get_pages_url(repo_name, repos_dict)
         output_path = output_dir / f"{repo_name}.png"
         
         print(f"\n[{repo_name}]")

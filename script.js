@@ -180,8 +180,13 @@ async function updateDescriptionsViaGitHubAPI() {
 }
 
 // GitHub PagesのURLを生成
-function getPagesUrl(repoName) {
-    return `https://${ACCOUNT_NAME}.github.io/${repoName}`;
+function getPagesUrl(repo) {
+    // リポジトリ情報にpages_urlがあればそれを使用
+    if (repo.pages_url) {
+        return repo.pages_url;
+    }
+    // フォールバック: 標準的なURLを生成
+    return `https://${ACCOUNT_NAME}.github.io/${repo.name}`;
 }
 
 // GitHubリポジトリのURLを生成
@@ -427,20 +432,21 @@ function createRepoCard(repo) {
     card.dataset.repoDescription = (repo.description || '').toLowerCase();
     
     // カード全体をクリック可能にする（GitHub Pagesへのリンク）
-    const pagesUrl = getPagesUrl(repo.name);
+    const pagesUrl = getPagesUrl(repo);
     card.style.cursor = 'pointer';
     card.addEventListener('click', (e) => {
         // リンクやボタンがクリックされた場合はカードのクリックイベントを無視
         if (e.target.closest('a') || e.target.closest('button')) {
             return;
         }
-        window.open(pagesUrl, '_blank', 'noopener,noreferrer');
+        // pages_urlが存在する場合のみクリック可能にする
+        if (pagesUrl) {
+            window.open(pagesUrl, '_blank', 'noopener,noreferrer');
+        }
     });
 
-    // GitHub Pagesが有効かどうかを確認（descriptionにpagesのURLが含まれているか、または推測）
-    // 実際には、各リポジトリのpages設定を確認する必要がありますが、
-    // 簡易的にリポジトリ名から推測します
-    const hasPages = repo.has_pages || repo.name.includes('page') || repo.name.includes('site');
+    // GitHub Pagesが有効かどうかを確認
+    const hasPages = repo.has_pages && repo.pages_url;
     if (hasPages) {
         card.classList.add('has-pages');
     }
@@ -474,15 +480,17 @@ function createRepoCard(repo) {
         screenshotUrls.push(screenshotMap[repo.name]);
     }
 
-    // GitHub Pagesの画像
-    screenshotUrls.push(
-        `${pagesUrl}/og-image.png`,
-        `${pagesUrl}/screenshot.png`,
-        `${pagesUrl}/preview.png`,
-        `${pagesUrl}/images/og-image.png`,
-        `${pagesUrl}/images/screenshot.png`,
-        `${pagesUrl}/images/preview.png`
-    );
+    // GitHub Pagesの画像（pages_urlが存在する場合のみ）
+    if (pagesUrl) {
+        screenshotUrls.push(
+            `${pagesUrl}/og-image.png`,
+            `${pagesUrl}/screenshot.png`,
+            `${pagesUrl}/preview.png`,
+            `${pagesUrl}/images/og-image.png`,
+            `${pagesUrl}/images/screenshot.png`,
+            `${pagesUrl}/images/preview.png`
+        );
+    }
 
     // GitHubリポジトリの画像
     screenshotUrls.push(
@@ -497,9 +505,9 @@ function createRepoCard(repo) {
             <div class="screenshot-overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.3) 100%); border-radius: 8px;"></div>
             <div class="repo-header-overlay">
                 <h3 class="repo-title">
-                    <a href="${pagesUrl}" target="_blank" rel="noopener noreferrer">
+                    ${pagesUrl ? `<a href="${pagesUrl}" target="_blank" rel="noopener noreferrer">
                         ${escapeHtml(courseName)}
-                    </a>
+                    </a>` : `<span>${escapeHtml(courseName)}</span>`}
                 </h3>
             </div>
         </div>
@@ -512,10 +520,10 @@ function createRepoCard(repo) {
         </div>
         <div class="repo-meta">
             <span>更新: ${updated}</span>
-            <a href="${pagesUrl}" class="course-link" target="_blank" rel="noopener noreferrer">
+            ${pagesUrl ? `<a href="${pagesUrl}" class="course-link" target="_blank" rel="noopener noreferrer">
                 <span>授業紹介ページ</span>
                 <i class="fas fa-external-link-alt"></i>
-            </a>
+            </a>` : ''}
         </div>
     `;
 

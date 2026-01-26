@@ -52,6 +52,28 @@ def detect_account_type(headers: dict) -> str:
     # どちらでもない場合はエラー
     raise Exception(f"アカウント '{ACCOUNT_NAME}' が見つかりませんでした。")
 
+def get_pages_url(headers: dict, repo_name: str) -> str:
+    """GitHub Pagesの公開URLを取得"""
+    try:
+        pages_response = requests.get(
+            f"{GITHUB_API_BASE}/repos/{ACCOUNT_NAME}/{repo_name}/pages",
+            headers=headers
+        )
+        
+        if pages_response.ok:
+            pages_data = pages_response.json()
+            # html_urlフィールドがあればそれを使用
+            if pages_data.get('html_url'):
+                return pages_data['html_url']
+        
+        # Pages APIから取得できない場合、標準的なURLを生成
+        # has_pagesがtrueの場合のみURLを生成
+        return f"https://{ACCOUNT_NAME}.github.io/{repo_name}"
+    except Exception as e:
+        # エラーが発生した場合も標準的なURLを生成
+        print(f"  ⚠️  [{repo_name}] GitHub Pages URLの取得に失敗: {e}")
+        return f"https://{ACCOUNT_NAME}.github.io/{repo_name}"
+
 def fetch_repositories(headers: dict, account_type: str) -> List[Dict]:
     """GitHub APIからリポジトリ一覧を取得"""
     print(f"\nリポジトリ一覧を取得中: {ACCOUNT_NAME}...")
@@ -80,6 +102,21 @@ def fetch_repositories(headers: dict, account_type: str) -> List[Dict]:
     repos = [repo for repo in repos if not repo.get('archived', False)]
     
     print(f"取得したリポジトリ数: {len(repos)}個")
+    
+    # 各リポジトリのGitHub Pages URLを取得
+    print(f"\nGitHub Pagesの公開URLを取得中...")
+    for i, repo in enumerate(repos, 1):
+        repo_name = repo['name']
+        has_pages = repo.get('has_pages', False)
+        
+        if has_pages:
+            print(f"  [{i}/{len(repos)}] {repo_name}...", end=' ')
+            pages_url = get_pages_url(headers, repo_name)
+            repo['pages_url'] = pages_url
+            print(f"✓ {pages_url}")
+        else:
+            repo['pages_url'] = None
+    
     return repos
 
 def save_repositories(repos: List[Dict], output_path: Path):
