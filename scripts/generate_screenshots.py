@@ -5,15 +5,27 @@ GitHub Pagesの各プロジェクトページのスクリーンショットを�
 使用方法:
     pip install playwright requests
     playwright install chromium
-    python generate_screenshots.py
+
+    # 個別リポジトリ（サムネイル用）
+    python generate_screenshots.py --repo programming-b-web --force
+
+    # 全リポジトリ
+    python generate_screenshots.py --force
+
+    # 任意のURL
+    python generate_screenshots.py --url https://kwu-cms.github.io/foo/ --name foo
+
+撮影後、screenshots/manifest.json が更新され、サイトのサムネイルに自動反映されます。
 """
 
+import argparse
 import os
 import json
 import requests
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Optional
 import time
+from datetime import datetime
 
 # Playwrightを使用する場合
 try:
@@ -37,14 +49,74 @@ ACCOUNT_NAME = 'kwu-cms'
 GITHUB_API_BASE = 'https://api.github.com'
 # 親ディレクトリのscreenshotsフォルダを使用
 OUTPUT_DIR = Path(__file__).parent.parent / 'screenshots'
-SCREENSHOT_WIDTH = 1920
-SCREENSHOT_HEIGHT = 1080
+MANIFEST_PATH = OUTPUT_DIR / 'manifest.json'
+# カードサムネイル向け（16:9、OG画像と同じ比率）
+SCREENSHOT_WIDTH = 1200
+SCREENSHOT_HEIGHT = 630
 WAIT_TIME = 3  # ページ読み込み待機時間（秒）
 
 # Personal Access Token（オプション）
 # レート制限を1時間あたり5000リクエストに増やすために設定できます
 # 環境変数 GITHUB_TOKEN から読み込むか、直接設定してください
 GITHUB_TOKEN = os.environ.get('GITHUB_TOKEN', '')
+
+
+def update_manifest() -> Dict[str, str]:
+    """screenshots/ 内の PNG から manifest.json を生成"""
+    OUTPUT_DIR.mkdir(exist_ok=True, parents=True)
+    screenshots = {}
+
+    for png_path in sorted(OUTPUT_DIR.glob('*.png')):
+        repo_name = png_path.stem
+        screenshots[repo_name] = f"screenshots/{png_path.name}"
+
+    manifest = {
+        'updated_at': datetime.now().isoformat(),
+        'width': SCREENSHOT_WIDTH,
+        'height': SCREENSHOT_HEIGHT,
+        'screenshots': screenshots,
+    }
+
+    with open(MANIFEST_PATH, 'w', encoding='utf-8') as f:
+        json.dump(manifest, f, ensure_ascii=False, indent=2)
+
+    print(f"\n📋 manifest.json を更新しました ({len(screenshots)}件)")
+    print(f"   {MANIFEST_PATH}")
+    return screenshots
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description='GitHub Pages のスクリーンショットを撮影し、サムネイル用 manifest を更新します。'
+    )
+    parser.add_argument(
+        '--repo',
+        help='撮影するリポジトリ名（例: programming-b-web）',
+    )
+    parser.add_argument(
+        '--url',
+        help='撮影する URL（--name と併用）',
+    )
+    parser.add_argument(
+        '--name',
+        help='保存ファイル名（--url 使用時のリポジトリ名、拡張子なし）',
+    )
+    parser.add_argument(
+        '--force',
+        action='store_true',
+        help='既存のスクリーンショットを上書きする',
+    )
+    parser.add_argument(
+        '--skip-check',
+        action='store_true',
+        help='GitHub Pages の存在確認をスキップする',
+    )
+    parser.add_argument(
+        '--manifest-only',
+        action='store_true',
+        help='撮影せず manifest.json のみ再生成する',
+    )
+    return parser.parse_args()
 
 
 def get_headers() -> dict:
@@ -241,49 +313,41 @@ def check_pages_exists(url: str, verbose: bool = False) -> bool:
 
 def main():
     """メイン処理"""
-    import sys
-    
-    # コマンドライン引数をチェック
-    skip_check = '--skip-check' in sys.argv or '--force' in sys.argv
-    force_overwrite = '--force' in sys.argv
-    
-    # 特定のリポジトリ名を指定（例: --repo programming-b-web）
-    target_repo = None
-    if '--repo' in sys.argv:
-        repo_index = sys.argv.index('--repo')
-        if repo_index + 1 < len(sys.argv):
-            target_repo = sys.argv[repo_index + 1]
-    
+    args = parse_args()
+
     print("=" * 60)
     print("GitHub Pages スクリーンショット生成ツール")
     print("=" * 60)
-    
-    if skip_check:
+
+    if args.manifest_only:
+        update_manifest()
+        return
+
+    if args.skip_check:
         print("⚠️  存在確認をスキップします（--skip-check）")
         print()
-    if force_overwrite:
+    if args.force:
         print("⚠️  既存のファイルを上書きします（--force）")
         print()
-    if target_repo:
-        print(f"🎯 対象リポジトリ: {target_repo}")
-        print()
-    
-    # 出力ディレクトリを作成
+
     output_dir = OUTPUT_DIR
     output_dir.mkdir(exist_ok=True, parents=True)
-    
-    # repositories.jsonからリポジトリ情報を読み込み（pages_urlを含む）
     repos_dict = load_repositories_from_json()
-    
-    # リポジトリ一覧を取得
-    if target_repo:
-        # 特定のリポジトリのみを処理する場合
-        if repos_dict and target_repo in repos_dict:
-            repos = [repos_dict[target_repo]]
+
+    # 撮影対象を決定
+    if args.url:
+        if not args.name:
+            print("❌ --url を使う場合は --name も指定してください")
+            return
+        repos = [{'name': args.name, 'pages_url': args.url}]
+        print(f"🎯 対象 URL: {args.url} → {args.name}.png\n")
+    elif args.repo:
+        if repos_dict and args.repo in repos_dict:
+            repos = [repos_dict[args.repo]]
         else:
-            repos = [{'name': target_repo}]
+            repos = [{'name': args.repo}]
+        print(f"🎯 対象リポジトリ: {args.repo}\n")
     else:
-        # repositories.jsonから読み込むか、APIから取得
         if repos_dict:
             repos = list(repos_dict.values())
             print(f"repositories.jsonから {len(repos)}個のリポジトリを読み込みました")
@@ -342,29 +406,27 @@ def main():
     
     for repo in repos:
         repo_name = repo['name']
-        pages_url = get_pages_url(repo_name, repos_dict)
+        pages_url = repo.get('pages_url') or get_pages_url(repo_name, repos_dict)
         output_path = output_dir / f"{repo_name}.png"
         
         print(f"\n[{repo_name}]")
         
-        # 既にスクリーンショットが存在する場合はスキップ（--forceオプションで上書き可能）
-        if output_path.exists() and not force_overwrite:
+        if output_path.exists() and not args.force:
             print(f"  スキップ: 既に存在します ({output_path})")
             print(f"  → 上書きする場合は --force オプションを使用してください")
             skip_count += 1
             continue
-        elif output_path.exists() and force_overwrite:
+        elif output_path.exists() and args.force:
             print(f"  上書き: 既存のファイルを更新します ({output_path})")
         
-        # GitHub Pagesが存在するか確認（--skip-checkオプションでスキップ可能）
-        if skip_check:
+        if args.skip_check:
             print(f"  存在確認をスキップ: スクリーンショットを生成します")
         else:
             pages_exists = check_pages_exists(pages_url, verbose=True)
             if not pages_exists:
                 print(f"  スキップ: GitHub Pagesが存在しないか、アクセスできません ({pages_url})")
                 print(f"  → 手動でブラウザで確認してください。存在する場合は、--skip-check オプションでスキップできます。")
-                print(f"  → 例: python generate_screenshots.py --repo {repo_name} --skip-check")
+                print(f"  → 例: python generate_screenshots.py --repo {repo_name} --skip-check --force")
                 skip_count += 1
                 continue
         
@@ -390,14 +452,12 @@ def main():
     print(f"エラー: {error_count}個")
     print(f"出力ディレクトリ: {output_dir.absolute()}")
     print("=" * 60)
-    
-    # 各プロジェクトのリポジトリに画像を配置する手順を表示
-    if success_count > 0:
+
+    if success_count > 0 or skip_count > 0:
+        update_manifest()
         print("\n次のステップ:")
-        print("1. 生成されたスクリーンショットを各プロジェクトのリポジトリに配置してください")
-        print("2. ファイル名を 'screenshot.png' または 'og-image.png' にリネーム")
-        print("3. リポジトリのルートまたは 'images/' フォルダに配置")
-        print("4. コミット・プッシュ")
+        print("1. screenshots/ と screenshots/manifest.json を Git にコミット")
+        print("2. プッシュするとサイトのサムネイルに反映されます")
 
 
 if __name__ == '__main__':

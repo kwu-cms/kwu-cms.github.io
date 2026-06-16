@@ -1,0 +1,18 @@
+{
+  "updated_at": "2026-06-16T17:15:33.555593",
+  "width": 1200,
+  "height": 630,
+  "screenshots": {
+    "ai-image-generator": "screenshots/ai-image-generator.png",
+    "app-dev-glide": "screenshots/app-dev-glide.png",
+    "cms-exercise-newmedia": "screenshots/cms-exercise-newmedia.png",
+    "cms-presentation": "screenshots/cms-presentation.png",
+    "creative-art-archive-2026": "screenshots/creative-art-archive-2026.png",
+    "digitai-fabrication-web": "screenshots/digitai-fabrication-web.png",
+    "kwu-cms.github.io": "screenshots/kwu-cms.github.io.png",
+    "machinaka-campus-2026": "screenshots/machinaka-campus-2026.png",
+    "new-media-web": "screenshots/new-media-web.png",
+    "programming-b-web": "screenshots/programming-b-web.png",
+    "url-slideshow": "screenshots/url-slideshow.png"
+  }
+}

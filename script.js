@@ -10,25 +10,19 @@ let customDescriptions = {}; // カスタム説明の保存（localStorageから
 let courseInfoMap = {}; // リポジトリ名 -> 授業情報のマッピング
 let courseData = {}; // 授業データ全体
 
-// スクリーンショット画像のマッピングを初期化
-function initScreenshotMap() {
-    // screenshotsフォルダ内の画像ファイル名からリポジトリ名を推測
-    const screenshotFiles = [
-        'cms-exercise-newmedia.png',
-        'cms-presentation.png',
-        'digitai-fabrication-web.png',
-        'kwu-cms.github.io.png',
-        'programming-b-web.png',
-        'app-dev-glide.png',
-        'new-media-web.png',
-        'ai-image-generator.png'
-    ];
-
-    screenshotFiles.forEach(filename => {
-        // ファイル名から.pngを除去してリポジトリ名を推測
-        const repoName = filename.replace('.png', '');
-        screenshotMap[repoName] = `screenshots/${filename}`;
-    });
+// スクリーンショット画像のマッピングを読み込み
+async function loadScreenshotMap() {
+    try {
+        const response = await fetch('screenshots/manifest.json');
+        if (response.ok) {
+            const data = await response.json();
+            screenshotMap = data.screenshots || {};
+            return;
+        }
+    } catch (error) {
+        console.warn('screenshots/manifest.json の読み込みに失敗しました:', error);
+    }
+    screenshotMap = {};
 }
 
 // カスタム説明をJSONファイルから読み込み
@@ -606,7 +600,7 @@ function displayRepos(repos) {
 // ページを初期化
 async function init() {
     // スクリーンショットマップとカスタム説明を初期化
-    initScreenshotMap();
+    await loadScreenshotMap();
     await loadCustomDescriptions();
 
     const loadingEl = document.getElementById('loading');
