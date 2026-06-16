@@ -9,6 +9,8 @@ let screenshotMap = {}; // スクリーンショット画像のマッピング�
 let customDescriptions = {}; // カスタム説明の保存（localStorageから読み込み）
 let courseInfoMap = {}; // リポジトリ名 -> 授業情報のマッピング
 let courseData = {}; // 授業データ全体
+let toolInfoMap = {}; // リポジトリ名 -> ツール情報のマッピング
+let toolsData = {}; // ツールデータ全体
 let hiddenRepos = []; // 一覧に表示しないリポジトリ
 
 function filterVisibleRepos(repos) {
@@ -33,63 +35,73 @@ async function loadScreenshotMap() {
 
 // カスタム説明をJSONファイルから読み込み
 async function loadCustomDescriptions() {
+    customDescriptions = {};
+    courseInfoMap = {};
+    toolInfoMap = {};
+    courseData = {};
+    toolsData = {};
+    hiddenRepos = [];
+
     try {
         const response = await fetch('custom-descriptions.json');
         if (response.ok) {
             const data = await response.json();
             hiddenRepos = data.hidden || [];
-            // 新しい構造（courses + other）と旧構造（descriptions）の両方に対応
-            if (data.courses && data.other) {
-                // 新しい構造: coursesとotherからリポジトリ名をキーとしたマップを作成
-                customDescriptions = {};
-                courseInfoMap = {};
-                courseData = data.courses || {};
+            courseData = data.courses || {};
 
-                // coursesから取得
-                if (data.courses) {
-                    Object.entries(data.courses).forEach(([courseName, courseInfo]) => {
-                        if (courseInfo.repositories) {
-                            Object.entries(courseInfo.repositories).forEach(([repoName, description]) => {
-                                customDescriptions[repoName] = description;
-                                // リポジトリ名から授業情報を取得できるようにマッピング
-                                courseInfoMap[repoName] = {
-                                    courseName: courseName,
-                                    summary: courseInfo.summary || null,
-                                    year: courseInfo.year,
-                                    type: courseInfo.type,
-                                    description: description
-                                };
-                            });
-                        }
+            // 授業（courses）
+            Object.entries(courseData).forEach(([courseName, courseInfo]) => {
+                if (!courseInfo.repositories) return;
+                Object.entries(courseInfo.repositories).forEach(([repoName, description]) => {
+                    customDescriptions[repoName] = description;
+                    courseInfoMap[repoName] = {
+                        courseName,
+                        summary: courseInfo.summary || null,
+                        year: courseInfo.year,
+                        type: courseInfo.type,
+                        description
+                    };
+                });
+            });
+
+            // ツール（tools）— 旧 other 形式にも対応
+            if (data.tools) {
+                toolsData = data.tools;
+                Object.entries(data.tools).forEach(([toolName, toolInfo]) => {
+                    if (!toolInfo.repositories) return;
+                    Object.entries(toolInfo.repositories).forEach(([repoName, description]) => {
+                        customDescriptions[repoName] = description;
+                        toolInfoMap[repoName] = {
+                            toolName,
+                            summary: toolInfo.summary || null,
+                            description
+                        };
                     });
-                }
-                // otherから取得
-                if (data.other) {
-                    Object.assign(customDescriptions, data.other);
-                }
+                });
+            } else if (data.other) {
+                // 旧構造: フラットな other を Tools セクションとして読み込み
+                toolsData = { Tools: { repositories: data.other } };
+                Object.entries(data.other).forEach(([repoName, description]) => {
+                    customDescriptions[repoName] = description;
+                    toolInfoMap[repoName] = {
+                        toolName: repoName,
+                        summary: null,
+                        description
+                    };
+                });
             } else if (data.descriptions) {
-                // 旧構造: 後方互換性のため
+                // さらに古い構造
                 customDescriptions = data.descriptions;
-                courseInfoMap = {};
-                courseData = {};
-            } else {
-                customDescriptions = {};
-                courseInfoMap = {};
-                courseData = {};
             }
+
             console.log('カスタム説明を読み込みました:', customDescriptions);
             console.log('授業情報マップ:', courseInfoMap);
+            console.log('ツール情報マップ:', toolInfoMap);
         } else {
-            console.log('custom-descriptions.jsonが見つかりません。新規作成します。');
-            customDescriptions = {};
-            courseInfoMap = {};
-            courseData = {};
+            console.log('custom-descriptions.jsonが見つかりません。');
         }
     } catch (e) {
         console.error('カスタム説明の読み込みに失敗しました:', e);
-        customDescriptions = {};
-        courseInfoMap = {};
-        courseData = {};
     }
 }
 
@@ -458,15 +470,19 @@ function createRepoCard(repo) {
     const description = customDescriptions[repo.name] || repo.description || '';
     const updated = new Date(repo.updated_at).toLocaleDateString('ja-JP');
 
-    // 授業情報を取得（リポジトリ名から授業名、年次、科目種別を取得）
+    // 授業・ツール情報を取得
     const courseInfo = courseInfoMap[repo.name];
-    const courseName = courseInfo ? courseInfo.courseName : repo.name;
-    const courseSummary = courseInfo ? courseInfo.summary : null;
+    const toolInfo = toolInfoMap[repo.name];
+    const displayName = toolInfo ? toolInfo.toolName : (courseInfo ? courseInfo.courseName : repo.name);
+    const displaySummary = toolInfo ? toolInfo.summary : (courseInfo ? courseInfo.summary : null);
     const courseYear = courseInfo ? courseInfo.year : null;
     const courseType = courseInfo ? courseInfo.type : null;
 
     // タグを生成
     let tagsHtml = '';
+    if (toolInfo) {
+        tagsHtml += `<span class="course-tag course-tag-tool">ツール</span>`;
+    }
     if (courseYear !== null) {
         tagsHtml += `<span class="course-tag course-tag-year">${courseYear}年次開講科目</span>`;
     }
@@ -509,13 +525,13 @@ function createRepoCard(repo) {
             <div class="repo-header-overlay">
                 <h3 class="repo-title">
                     ${pagesUrl ? `<a href="${pagesUrl}" target="_blank" rel="noopener noreferrer">
-                        ${escapeHtml(courseName)}
-                    </a>` : `<span>${escapeHtml(courseName)}</span>`}
+                        ${escapeHtml(displayName)}
+                    </a>` : `<span>${escapeHtml(displayName)}</span>`}
                 </h3>
             </div>
         </div>
         <div class="repo-header">
-            ${courseSummary ? `<p class="course-summary">${escapeHtml(courseSummary)}</p>` : ''}
+            ${displaySummary ? `<p class="course-summary">${escapeHtml(displaySummary)}</p>` : ''}
             ${tagsHtml ? `<div class="course-tags">${tagsHtml}</div>` : ''}
         </div>
         <div class="course-description-container">
@@ -524,7 +540,7 @@ function createRepoCard(repo) {
         <div class="repo-meta">
             <span>更新: ${updated}</span>
             ${pagesUrl ? `<a href="${pagesUrl}" class="course-link" target="_blank" rel="noopener noreferrer">
-                <span>授業紹介ページ</span>
+                <span>${toolInfo ? 'ツールページ' : '授業紹介ページ'}</span>
                 <i class="fas fa-external-link-alt"></i>
             </a>` : ''}
         </div>
@@ -582,26 +598,52 @@ function displayRepos(repos) {
     const reposContainer = document.getElementById('repos-container');
     const emptyResults = document.getElementById('empty-results');
 
-    // 既存のカードをクリア
     reposContainer.innerHTML = '';
 
-    if (repos.length === 0) {
+    const classifiedRepos = repos.filter(
+        repo => courseInfoMap[repo.name] || toolInfoMap[repo.name]
+    );
+    const courseRepos = classifiedRepos
+        .filter(repo => courseInfoMap[repo.name])
+        .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+    const toolRepos = classifiedRepos
+        .filter(repo => toolInfoMap[repo.name])
+        .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+
+    if (classifiedRepos.length === 0) {
         emptyResults.style.display = 'block';
         reposContainer.style.display = 'none';
         return;
     }
 
     emptyResults.style.display = 'none';
-    reposContainer.style.display = 'grid';
+    reposContainer.style.display = 'block';
 
-    // 更新日時順にソート
-    const sortedRepos = [...repos].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+    if (courseRepos.length > 0) {
+        reposContainer.appendChild(createRepoSection('授業成果', courseRepos));
+    }
+    if (toolRepos.length > 0) {
+        reposContainer.appendChild(createRepoSection('Tools', toolRepos));
+    }
+}
 
-    // カードを生成して追加
-    sortedRepos.forEach(repo => {
-        const card = createRepoCard(repo);
-        reposContainer.appendChild(card);
+function createRepoSection(title, repos) {
+    const section = document.createElement('section');
+    section.className = 'repo-section';
+
+    const heading = document.createElement('h2');
+    heading.className = 'repo-section-title';
+    heading.textContent = title;
+    section.appendChild(heading);
+
+    const grid = document.createElement('div');
+    grid.className = 'repos-grid';
+    repos.forEach(repo => {
+        grid.appendChild(createRepoCard(repo));
     });
+    section.appendChild(grid);
+
+    return section;
 }
 
 // ページを初期化
