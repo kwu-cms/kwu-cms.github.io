@@ -9,6 +9,12 @@ let screenshotMap = {}; // スクリーンショット画像のマッピング�
 let customDescriptions = {}; // カスタム説明の保存（localStorageから読み込み）
 let courseInfoMap = {}; // リポジトリ名 -> 授業情報のマッピング
 let courseData = {}; // 授業データ全体
+let hiddenRepos = []; // 一覧に表示しないリポジトリ
+
+function filterVisibleRepos(repos) {
+    if (!hiddenRepos.length) return repos;
+    return repos.filter(repo => !hiddenRepos.includes(repo.name));
+}
 
 // スクリーンショット画像のマッピングを読み込み
 async function loadScreenshotMap() {
@@ -31,6 +37,7 @@ async function loadCustomDescriptions() {
         const response = await fetch('custom-descriptions.json');
         if (response.ok) {
             const data = await response.json();
+            hiddenRepos = data.hidden || [];
             // 新しい構造（courses + other）と旧構造（descriptions）の両方に対応
             if (data.courses && data.other) {
                 // 新しい構造: coursesとotherからリポジトリ名をキーとしたマップを作成
@@ -317,7 +324,7 @@ async function loadRepositoriesFromJSON() {
         if (response.ok) {
             const data = await response.json();
             console.log(`repositories.jsonから読み込みました (取得時刻: ${data.fetched_at || '不明'}, リポジトリ数: ${data.repositories?.length || 0}個)`);
-            return data.repositories || [];
+            return filterVisibleRepos(data.repositories || []);
         }
     } catch (e) {
         console.log('repositories.jsonが見つかりません。GitHub APIから取得します。');
@@ -407,7 +414,7 @@ async function fetchRepositories() {
 
         console.log(`取得したリポジトリ数: ${repos.length}個`);
 
-        return repos.filter(repo => !repo.archived); // アーカイブされたリポジトリを除外
+        return filterVisibleRepos(repos.filter(repo => !repo.archived)); // アーカイブ・非公開を除外
     } catch (error) {
         console.error('Error fetching repositories:', error);
 

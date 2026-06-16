@@ -23,6 +23,18 @@ from datetime import datetime
 ACCOUNT_NAME = 'kwu-cms'
 GITHUB_API_BASE = 'https://api.github.com'
 
+def load_hidden_repos() -> List[str]:
+    """custom-descriptions.json から非公開リポジトリ一覧を読み込む"""
+    json_path = Path(__file__).parent.parent / 'custom-descriptions.json'
+    if json_path.exists():
+        try:
+            with open(json_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                return data.get('hidden', [])
+        except Exception:
+            pass
+    return []
+
 def get_headers() -> dict:
     """APIリクエスト用のヘッダーを取得"""
     headers = {
@@ -98,8 +110,9 @@ def fetch_repositories(headers: dict, account_type: str) -> List[Dict]:
     response.raise_for_status()
     
     repos = response.json()
-    # アーカイブされたリポジトリを除外
-    repos = [repo for repo in repos if not repo.get('archived', False)]
+    # アーカイブ・非公開リポジトリを除外
+    hidden = load_hidden_repos()
+    repos = [repo for repo in repos if not repo.get('archived', False) and repo['name'] not in hidden]
     
     print(f"取得したリポジトリ数: {len(repos)}個")
     
