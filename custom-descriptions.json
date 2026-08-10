@@ -1,7 +1,9 @@
 {
   "description": "このファイルには、GitHubリポジトリのカスタム説明が保存されます。授業名や授業成果をまとめるページとして整理されています。",
   "hidden": [
-    "ai-image-generator"
+    "ai-image-generator",
+    "kwu-cms.github.io",
+    "creative-art-archive-2026"
   ],
   "courses": {
     "メディア表現発展演習Ⅰ（2025）": {
@@ -45,11 +47,11 @@
       }
     },
     "メディア表現発展演習Ⅰ（2026）": {
-      "summary": "AI画像生成やキャンパスアートマップなど、デジタルメディアを活用した創作",
+      "summary": "デジタルメディアを活用した創作の授業記録・成果アーカイブ",
       "year": 2,
       "type": "必修",
       "repositories": {
-        "creative-art-archive-2026": "キャンパス地図上に学生の3Dスキャン作品をピンで表示するアーカイブサイト"
+        "cms-exercise-archive-2026": "2026年度の授業記録・成果公開サイト（担当教員別ページを含む）"
       }
     },
     "まちなかキャンパス2026": {
@@ -68,13 +70,18 @@
         "new-media-web": "ニューメディア研究ゼミ2025年度卒業研究発表のページ。発表資料やレポートを閲覧できる"
       }
     }
-
   },
   "tools": {
     "URLスライドショー": {
       "summary": "URLのリストを順番に自動表示するWebツール",
       "repositories": {
         "url-slideshow": "複数のURLを設定した時間間隔で順番に表示できます"
+      }
+    },
+    "EZ Sign キャプション生成": {
+      "summary": "NFCキャプション（EZ Sign）用カードをCSVから生成するツール",
+      "repositories": {
+        "EZSignNFC-caption-generator": "展示作品のタイトル・作者などのCSVから、電子ペーパー向けキャプションカードを一覧表示・PNG書き出し"
       }
     }
   }
