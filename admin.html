@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>リポジトリ管理 | kwu-cms</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+        integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="admin.css">
+</head>
+
+<body>
+    <header>
+        <div class="container">
+            <h1>リポジトリ管理</h1>
+            <p class="subtitle">更新確認・分類状況・プライベートリポジトリの確認</p>
+            <p class="admin-nav"><a href="index.html"><i class="fas fa-arrow-left"></i> 公開ページへ戻る</a></p>
+        </div>
+    </header>
+
+    <main class="container admin-main">
+        <section class="admin-panel" aria-labelledby="token-heading">
+            <h2 id="token-heading">GitHub トークン</h2>
+            <p class="admin-help">
+                プライベートリポジトリを含めて確認するには Personal Access Token（<code>repo</code> スコープ）が必要です。
+                トークンはブラウザの localStorage にのみ保存され、このサイトのリポジトリにはコミットされません。
+            </p>
+            <div class="token-row">
+                <input type="password" id="token-input" class="admin-input" placeholder="ghp_..." autocomplete="off"
+                    spellcheck="false">
+                <button type="button" id="save-token" class="admin-btn">保存</button>
+                <button type="button" id="clear-token" class="admin-btn secondary">削除</button>
+            </div>
+            <p id="token-status" class="token-status" aria-live="polite"></p>
+        </section>
+
+        <section class="admin-panel" aria-labelledby="actions-heading">
+            <h2 id="actions-heading">操作</h2>
+            <div class="action-row">
+                <button type="button" id="check-updates" class="admin-btn primary">
+                    <i class="fas fa-sync-alt"></i> 更新を確認
+                </button>
+                <label class="filter-toggle">
+                    <input type="checkbox" id="filter-attention" checked>
+                    要対応のみ表示
+                </label>
+            </div>
+            <p id="check-status" class="check-status" aria-live="polite"></p>
+        </section>
+
+        <section class="admin-panel summary-panel" aria-labelledby="summary-heading">
+            <h2 id="summary-heading">概要</h2>
+            <div id="summary-cards" class="summary-cards">
+                <p class="admin-placeholder">「更新を確認」を押すと状況が表示されます。</p>
+            </div>
+            <p id="snapshot-meta" class="snapshot-meta"></p>
+        </section>
+
+        <section class="admin-panel" aria-labelledby="list-heading">
+            <h2 id="list-heading">リポジトリ一覧</h2>
+            <div class="table-wrap">
+                <table class="admin-table" id="repo-table">
+                    <thead>
+                        <tr>
+                            <th>名前</th>
+                            <th>可視性</th>
+                            <th>分類</th>
+                            <th>Pages</th>
+                            <th>更新日時</th>
+                            <th>差分</th>
+                            <th>リンク</th>
+                        </tr>
+                    </thead>
+                    <tbody id="repo-tbody">
+                        <tr>
+                            <td colspan="7" class="admin-placeholder">まだ確認していません</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="admin-panel" aria-labelledby="next-heading">
+            <h2 id="next-heading">次のステップ</h2>
+            <ol id="next-steps" class="next-steps">
+                <li>上の「更新を確認」で GitHub 上の最新状態を取得する</li>
+                <li>未分類のリポジトリは <code>custom-descriptions.json</code> の courses / tools に追加する</li>
+                <li>公開したいリポジトリは private を解除してから
+                    <code>python scripts/fetch_repositories.py</code> で <code>repositories.json</code> を更新する</li>
+                <li>変更をコミット・プッシュすると公開ページに反映される</li>
+            </ol>
+            <div id="attention-notes" class="attention-notes"></div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 甲南女子大学文学部メディア表現学科. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="admin.js"></script>
+</body>
+
+</html>

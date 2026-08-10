@@ -18,6 +18,15 @@ export GITHUB_TOKEN=your_token_here  # オプション（推奨）
 python fetch_repositories.py
 ```
 
+状況確認のみ（ファイルは更新しない）:
+
+```bash
+export GITHUB_TOKEN=your_token_here  # プライベート含む確認に必要
+python fetch_repositories.py --check
+```
+
+ブラウザでも同様の確認ができます: [`../admin.html`](../admin.html)（トークンは localStorage のみ）
+
 ### 2. 出力ファイルを確認
 
 `repositories.json`ファイルがプロジェクトのルートディレクトリに作成されます。
@@ -117,6 +126,8 @@ jobs:
 - `repositories.json`はGitにコミットしてください
 - 定期的に更新することを推奨します
 - GitHub APIのレート制限を回避するため、Personal Access Tokenの使用を推奨します
+- **private リポジトリは既定で `repositories.json` に含めません**（公開サイトへのメタデータ漏洩を防ぐため）。確認は `--check` または `admin.html` を使ってください
+- 一覧に出すには `custom-descriptions.json` の courses / tools への登録が必要です
 
 ## 🔍 トラブルシューティング
 

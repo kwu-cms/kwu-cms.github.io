@@ -37,17 +37,23 @@ GitHub APIからリポジトリ情報を取得して、JSONファイルに保存
 ```bash
 cd scripts
 pip install -r requirements.txt
-export GITHUB_TOKEN=your_token_here  # オプション（推奨）
-python fetch_repositories.py
+export GITHUB_TOKEN=your_token_here  # プライベート確認・レート制限回避に推奨
+python fetch_repositories.py           # repositories.json を更新（公開リポのみ）
+python fetch_repositories.py --check   # 更新・分類状況の確認のみ
 ```
 
 **出力:**
-- `../repositories.json` - リポジトリ情報が保存されます
+- `../repositories.json` - リポジトリ情報（`--check` 時は更新しない）
+
+**補足:**
+- private リポジトリは既定で JSON に含めません（公開 Pages への漏洩防止）
+- ブラウザの管理画面: [`../admin.html`](../admin.html)
 
 **メリット:**
 - レート制限を回避できます
 - ページの読み込みが速くなります
 - GitHub APIへの依存を減らせます
+- `--check` / `admin.html` で未分類・更新差分を一覧確認できます
 
 **詳細:** [../docs/FETCH_REPOSITORIES.md](../docs/FETCH_REPOSITORIES.md)
 

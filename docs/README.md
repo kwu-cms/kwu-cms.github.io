@@ -19,6 +19,7 @@
 
 - **[REPOSITORY_NAMES.md](REPOSITORY_NAMES.md)** - リポジトリ名の候補リスト
 - **[FETCH_REPOSITORIES.md](FETCH_REPOSITORIES.md)** - リポジトリ情報の事前取得方法（レート制限回避）
+- **[ADMIN.md](ADMIN.md)** - リポジトリ管理画面（更新確認・private・未分類の確認）
 - **[EDIT_REPO_DESCRIPTION.md](EDIT_REPO_DESCRIPTION.md)** - GitHubリポジトリの説明を編集する方法（Webインターフェース）
 - **[GITHUB_REPO_DESCRIPTION.md](GITHUB_REPO_DESCRIPTION.md)** - リポジトリの説明を編集する方法（全方法）
 - **[DESCRIPTION_EDIT_GUIDE.md](DESCRIPTION_EDIT_GUIDE.md)** - このWebアプリでの説明編集方法
