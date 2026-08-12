@@ -6,7 +6,7 @@
 
 - GitHub 上の最新リポジトリ一覧を取得（更新確認）
 - `repositories.json`（スナップショット）との差分表示
-- `custom-descriptions.json` の分類状況（授業 / Tools / 非表示 / 未分類）
+- `custom-descriptions.json` の分類状況（授業 / 特設 / Tools / 非表示 / 未分類）
 - private / public の可視性確認
 - 要対応項目のまとめ（未分類・Private・未収録・更新あり）
 
@@ -38,6 +38,9 @@ git commit -m "Update: リポジトリ情報を更新"
 1. GitHub にリポジトリを作成（作業中は private でも可）
 2. `admin.html` または `--check` で認識されているか確認
 3. 公開するタイミングで public にする
-4. `custom-descriptions.json` に courses / tools を追加
+4. `custom-descriptions.json` に追加
+   - 授業: `courses` + `tags: ["2年次", "必修"]`
+   - 特設サイト: `events` + `tags: ["特設サイト", "学外イベント"]`
+   - ツール: `tools` + `tags: ["Webツール"]`
 5. `python scripts/fetch_repositories.py` で `repositories.json` を更新
 6. 必要ならスクリーンショット生成 → コミット・プッシュ

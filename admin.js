@@ -102,6 +102,7 @@ async function loadClassification() {
     const result = {
         hidden: [],
         courseMap: {},
+        eventMap: {},
         toolMap: {}
     };
 
@@ -114,6 +115,12 @@ async function loadClassification() {
         Object.entries(data.courses || {}).forEach(([courseName, courseInfo]) => {
             Object.keys(courseInfo.repositories || {}).forEach(repoName => {
                 result.courseMap[repoName] = courseName;
+            });
+        });
+
+        Object.entries(data.events || {}).forEach(([eventName, eventInfo]) => {
+            Object.keys(eventInfo.repositories || {}).forEach(repoName => {
+                result.eventMap[repoName] = eventName;
             });
         });
 
@@ -150,6 +157,9 @@ function classifyRepo(name, classification) {
     }
     if (classification.courseMap[name]) {
         return { kind: 'course', label: '授業', courseOrTool: classification.courseMap[name] };
+    }
+    if (classification.eventMap[name]) {
+        return { kind: 'event', label: '特設', courseOrTool: classification.eventMap[name] };
     }
     if (classification.toolMap[name]) {
         return { kind: 'tool', label: 'Tools', courseOrTool: classification.toolMap[name] };
@@ -272,6 +282,7 @@ function renderSummary(summary) {
 function badgeClassForClassification(kind) {
     return {
         course: 'badge-course',
+        event: 'badge-event',
         tool: 'badge-tool',
         hidden: 'badge-hidden',
         unclassified: 'badge-unclassified'

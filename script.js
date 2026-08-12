@@ -9,6 +9,8 @@ let screenshotMap = {}; // スクリーンショット画像のマッピング�
 let customDescriptions = {}; // カスタム説明の保存（localStorageから読み込み）
 let courseInfoMap = {}; // リポジトリ名 -> 授業情報のマッピング
 let courseData = {}; // 授業データ全体
+let eventInfoMap = {}; // リポジトリ名 -> 特設・イベント情報
+let eventsData = {};
 let toolInfoMap = {}; // リポジトリ名 -> ツール情報のマッピング
 let toolsData = {}; // ツールデータ全体
 let hiddenRepos = []; // 一覧に表示しないリポジトリ
@@ -16,6 +18,59 @@ let hiddenRepos = []; // 一覧に表示しないリポジトリ
 function filterVisibleRepos(repos) {
     if (!hiddenRepos.length) return repos;
     return repos.filter(repo => !hiddenRepos.includes(repo.name));
+}
+
+function isBlankTagToken(value) {
+    if (value === null || value === undefined) return true;
+    const normalized = String(value).trim().toLowerCase();
+    return normalized === '' || normalized === 'none' || normalized === 'null';
+}
+
+/** tags 配列、または旧 year/type から表示用ラベル配列を作る */
+function normalizeItemTags(itemInfo = {}) {
+    const tags = [];
+    const seen = new Set();
+
+    const pushTag = (raw) => {
+        if (isBlankTagToken(raw)) return;
+        const label = String(raw).trim();
+        if (!label || seen.has(label)) return;
+        seen.add(label);
+        tags.push(label);
+    };
+
+    if (Array.isArray(itemInfo.tags)) {
+        itemInfo.tags.forEach(pushTag);
+    }
+
+    // 後方互換: year / type（"none" は無視）
+    if (!Array.isArray(itemInfo.tags) || itemInfo.tags.length === 0) {
+        if (!isBlankTagToken(itemInfo.year)) {
+            pushTag(`${itemInfo.year}年次`);
+        }
+        if (!isBlankTagToken(itemInfo.type)) {
+            pushTag(itemInfo.type);
+        }
+    }
+
+    return tags;
+}
+
+function registerGroupItems(groupData, map, kind) {
+    Object.entries(groupData || {}).forEach(([groupName, groupInfo]) => {
+        if (!groupInfo || !groupInfo.repositories) return;
+        const tags = normalizeItemTags(groupInfo);
+        Object.entries(groupInfo.repositories).forEach(([repoName, description]) => {
+            customDescriptions[repoName] = description;
+            map[repoName] = {
+                kind,
+                groupName,
+                summary: groupInfo.summary || null,
+                tags,
+                description
+            };
+        });
+    });
 }
 
 // スクリーンショット画像のマッピングを読み込み
@@ -37,8 +92,10 @@ async function loadScreenshotMap() {
 async function loadCustomDescriptions() {
     customDescriptions = {};
     courseInfoMap = {};
+    eventInfoMap = {};
     toolInfoMap = {};
     courseData = {};
+    eventsData = {};
     toolsData = {};
     hiddenRepos = [];
 
@@ -48,54 +105,25 @@ async function loadCustomDescriptions() {
             const data = await response.json();
             hiddenRepos = data.hidden || [];
             courseData = data.courses || {};
+            eventsData = data.events || {};
+            toolsData = data.tools || {};
 
-            // 授業（courses）
-            Object.entries(courseData).forEach(([courseName, courseInfo]) => {
-                if (!courseInfo.repositories) return;
-                Object.entries(courseInfo.repositories).forEach(([repoName, description]) => {
-                    customDescriptions[repoName] = description;
-                    courseInfoMap[repoName] = {
-                        courseName,
-                        summary: courseInfo.summary || null,
-                        year: courseInfo.year,
-                        type: courseInfo.type,
-                        description
-                    };
-                });
-            });
+            registerGroupItems(courseData, courseInfoMap, 'course');
+            registerGroupItems(eventsData, eventInfoMap, 'event');
 
-            // ツール（tools）— 旧 other 形式にも対応
             if (data.tools) {
-                toolsData = data.tools;
-                Object.entries(data.tools).forEach(([toolName, toolInfo]) => {
-                    if (!toolInfo.repositories) return;
-                    Object.entries(toolInfo.repositories).forEach(([repoName, description]) => {
-                        customDescriptions[repoName] = description;
-                        toolInfoMap[repoName] = {
-                            toolName,
-                            summary: toolInfo.summary || null,
-                            description
-                        };
-                    });
-                });
+                registerGroupItems(data.tools, toolInfoMap, 'tool');
             } else if (data.other) {
                 // 旧構造: フラットな other を Tools セクションとして読み込み
-                toolsData = { Tools: { repositories: data.other } };
-                Object.entries(data.other).forEach(([repoName, description]) => {
-                    customDescriptions[repoName] = description;
-                    toolInfoMap[repoName] = {
-                        toolName: repoName,
-                        summary: null,
-                        description
-                    };
-                });
+                toolsData = { Tools: { repositories: data.other, tags: ['ツール'] } };
+                registerGroupItems(toolsData, toolInfoMap, 'tool');
             } else if (data.descriptions) {
-                // さらに古い構造
                 customDescriptions = data.descriptions;
             }
 
             console.log('カスタム説明を読み込みました:', customDescriptions);
             console.log('授業情報マップ:', courseInfoMap);
+            console.log('イベント情報マップ:', eventInfoMap);
             console.log('ツール情報マップ:', toolInfoMap);
         } else {
             console.log('custom-descriptions.jsonが見つかりません。');
@@ -439,67 +467,55 @@ async function fetchRepositories() {
     }
 }
 
+function getItemInfo(repoName) {
+    return courseInfoMap[repoName] || eventInfoMap[repoName] || toolInfoMap[repoName] || null;
+}
+
 // リポジトリカードを生成
 function createRepoCard(repo) {
-    const card = document.createElement('div');
+    const card = document.createElement('article');
     card.className = 'repo-card';
     card.dataset.repoName = repo.name.toLowerCase();
     card.dataset.repoDescription = (repo.description || '').toLowerCase();
-    
-    // カード全体をクリック可能にする（GitHub Pagesへのリンク）
-    const pagesUrl = getPagesUrl(repo);
-    card.style.cursor = 'pointer';
-    card.addEventListener('click', (e) => {
-        // リンクやボタンがクリックされた場合はカードのクリックイベントを無視
-        if (e.target.closest('a') || e.target.closest('button')) {
-            return;
-        }
-        // pages_urlが存在する場合のみクリック可能にする
-        if (pagesUrl) {
-            window.open(pagesUrl, '_blank', 'noopener,noreferrer');
-        }
-    });
 
-    // GitHub Pagesが有効かどうかを確認
-    const hasPages = repo.has_pages && repo.pages_url;
-    if (hasPages) {
+    const pagesUrl = getPagesUrl(repo);
+    if (pagesUrl) {
+        card.classList.add('is-clickable');
+        card.addEventListener('click', (e) => {
+            if (e.target.closest('a') || e.target.closest('button')) return;
+            window.open(pagesUrl, '_blank', 'noopener,noreferrer');
+        });
+    }
+
+    if (repo.has_pages && repo.pages_url) {
         card.classList.add('has-pages');
     }
 
-    // カスタム説明があればそれを使用、なければGitHubの説明を使用
     const description = customDescriptions[repo.name] || repo.description || '';
     const updated = new Date(repo.updated_at).toLocaleDateString('ja-JP');
 
-    // 授業・ツール情報を取得
-    const courseInfo = courseInfoMap[repo.name];
-    const toolInfo = toolInfoMap[repo.name];
-    const displayName = toolInfo ? toolInfo.toolName : (courseInfo ? courseInfo.courseName : repo.name);
-    const displaySummary = toolInfo ? toolInfo.summary : (courseInfo ? courseInfo.summary : null);
-    const courseYear = courseInfo ? courseInfo.year : null;
-    const courseType = courseInfo ? courseInfo.type : null;
+    const itemInfo = getItemInfo(repo.name);
+    const displayName = itemInfo ? itemInfo.groupName : repo.name;
+    const displaySummary = itemInfo ? itemInfo.summary : null;
+    const tags = itemInfo ? (itemInfo.tags || []) : [];
+    const kind = itemInfo ? itemInfo.kind : null;
 
-    // タグを生成
-    let tagsHtml = '';
-    if (toolInfo) {
-        tagsHtml += `<span class="course-tag course-tag-tool">ツール</span>`;
-    }
-    if (courseYear !== null) {
-        tagsHtml += `<span class="course-tag course-tag-year">${courseYear}年次開講科目</span>`;
-    }
-    if (courseType) {
-        tagsHtml += `<span class="course-tag course-tag-type">${courseType}科目</span>`;
-    }
+    const tagClassByKind = {
+        course: 'course-tag-course',
+        event: 'course-tag-event',
+        tool: 'course-tag-tool'
+    };
+    const tagClass = tagClassByKind[kind] || 'course-tag-course';
+    const tagsHtml = tags
+        .map(tag => `<span class="course-tag ${tagClass}">${escapeHtml(tag)}</span>`)
+        .join('');
 
-    // スクリーンショット画像のURL（複数のパスを試す）
-    // ローカルのscreenshotsフォルダを最優先で試す
+    const linkLabel = kind === 'tool' ? '開く' : (kind === 'event' ? 'サイトを見る' : '成果を見る');
+
     const screenshotUrls = [];
-
-    // ローカルのscreenshotsフォルダの画像を最優先
     if (screenshotMap[repo.name]) {
         screenshotUrls.push(screenshotMap[repo.name]);
     }
-
-    // GitHub Pagesの画像（pages_urlが存在する場合のみ）
     if (pagesUrl) {
         screenshotUrls.push(
             `${pagesUrl}/og-image.png`,
@@ -510,8 +526,6 @@ function createRepoCard(repo) {
             `${pagesUrl}/images/preview.png`
         );
     }
-
-    // GitHubリポジトリの画像
     screenshotUrls.push(
         `https://raw.githubusercontent.com/${ACCOUNT_NAME}/${repo.name}/main/screenshot.png`,
         `https://raw.githubusercontent.com/${ACCOUNT_NAME}/${repo.name}/main/og-image.png`,
@@ -519,61 +533,48 @@ function createRepoCard(repo) {
         `https://raw.githubusercontent.com/${ACCOUNT_NAME}/${repo.name}/main/images/og-image.png`
     );
 
+    const titleInner = pagesUrl
+        ? `<a href="${pagesUrl}" target="_blank" rel="noopener noreferrer">${escapeHtml(displayName)}</a>`
+        : `<span>${escapeHtml(displayName)}</span>`;
+
     card.innerHTML = `
-        <div class="repo-screenshot" data-repo-name="${repo.name}" style="background-color: var(--bg-color); background-size: cover; background-position: center; height: 200px; border-radius: 8px; margin-bottom: 1rem; position: relative; min-height: 200px;">
-            <div class="screenshot-overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.3) 100%); border-radius: 8px;"></div>
-            <div class="repo-header-overlay">
-                <h3 class="repo-title">
-                    ${pagesUrl ? `<a href="${pagesUrl}" target="_blank" rel="noopener noreferrer">
-                        ${escapeHtml(displayName)}
-                    </a>` : `<span>${escapeHtml(displayName)}</span>`}
-                </h3>
+        <div class="repo-media is-placeholder" data-repo-name="${escapeHtml(repo.name)}" aria-hidden="true">
+            <div class="repo-media-image"></div>
+        </div>
+        <div class="repo-body">
+            ${tagsHtml ? `<div class="repo-tags">${tagsHtml}</div>` : ''}
+            <h3 class="repo-title">${titleInner}</h3>
+            ${displaySummary ? `<p class="repo-summary">${escapeHtml(displaySummary)}</p>` : ''}
+            ${description ? `<p class="repo-description" data-repo-name="${escapeHtml(repo.name)}">${escapeHtml(description)}</p>` : ''}
+            <div class="repo-meta">
+                <span class="repo-updated">更新 ${updated}</span>
+                ${pagesUrl ? `<a href="${pagesUrl}" class="course-link" target="_blank" rel="noopener noreferrer">
+                    <span>${linkLabel}</span>
+                    <i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
+                </a>` : ''}
             </div>
-        </div>
-        <div class="repo-header">
-            ${displaySummary ? `<p class="course-summary">${escapeHtml(displaySummary)}</p>` : ''}
-            ${tagsHtml ? `<div class="course-tags">${tagsHtml}</div>` : ''}
-        </div>
-        <div class="course-description-container">
-            ${description ? `<p class="course-description" data-repo-name="${repo.name}">${escapeHtml(description)}</p>` : `<p class="course-description" data-repo-name="${repo.name}"></p>`}
-        </div>
-        <div class="repo-meta">
-            <span>更新: ${updated}</span>
-            ${pagesUrl ? `<a href="${pagesUrl}" class="course-link" target="_blank" rel="noopener noreferrer">
-                <span>${toolInfo ? 'ツールページ' : '授業紹介ページ'}</span>
-                <i class="fas fa-external-link-alt"></i>
-            </a>` : ''}
         </div>
     `;
 
-    // スクリーンショット画像の読み込み（複数のパスを試す）
-    // 説明の有無に関わらず、常にスクリーンショットを試行
-    const screenshotEl = card.querySelector('.repo-screenshot');
-    if (screenshotEl) {
+    const mediaEl = card.querySelector('.repo-media');
+    const mediaImageEl = card.querySelector('.repo-media-image');
+    if (mediaEl && mediaImageEl) {
         let currentIndex = 0;
-        let imageFound = false;
 
         const tryLoadImage = () => {
             if (currentIndex >= screenshotUrls.length) {
-                // すべてのパスを試しても見つからない場合は非表示
-                if (!imageFound) {
-                    screenshotEl.style.display = 'none';
-                    console.log(`[${repo.name}] スクリーンショット画像が見つかりませんでした`);
-                }
+                mediaEl.classList.add('is-placeholder');
+                mediaEl.classList.remove('has-image');
                 return;
             }
 
             const img = new Image();
             img.onload = () => {
-                // 画像が見つかった
-                imageFound = true;
-                screenshotEl.style.backgroundImage = `url('${screenshotUrls[currentIndex]}')`;
-                screenshotEl.style.backgroundSize = 'cover';
-                screenshotEl.style.backgroundPosition = 'center';
-                console.log(`[${repo.name}] スクリーンショット画像を読み込みました: ${screenshotUrls[currentIndex]}`);
+                mediaImageEl.style.backgroundImage = `url('${screenshotUrls[currentIndex]}')`;
+                mediaEl.classList.add('has-image');
+                mediaEl.classList.remove('is-placeholder');
             };
             img.onerror = () => {
-                // 次のパスを試す
                 currentIndex++;
                 tryLoadImage();
             };
@@ -601,10 +602,13 @@ function displayRepos(repos) {
     reposContainer.innerHTML = '';
 
     const classifiedRepos = repos.filter(
-        repo => courseInfoMap[repo.name] || toolInfoMap[repo.name]
+        repo => courseInfoMap[repo.name] || eventInfoMap[repo.name] || toolInfoMap[repo.name]
     );
     const courseRepos = classifiedRepos
         .filter(repo => courseInfoMap[repo.name])
+        .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+    const eventRepos = classifiedRepos
+        .filter(repo => eventInfoMap[repo.name])
         .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
     const toolRepos = classifiedRepos
         .filter(repo => toolInfoMap[repo.name])
@@ -617,19 +621,28 @@ function displayRepos(repos) {
     }
 
     emptyResults.style.display = 'none';
-    reposContainer.style.display = 'block';
+    reposContainer.style.display = 'flex';
 
     if (courseRepos.length > 0) {
         reposContainer.appendChild(createRepoSection('授業成果', courseRepos));
     }
+    if (eventRepos.length > 0) {
+        reposContainer.appendChild(createRepoSection('特設・イベント', eventRepos));
+    }
     if (toolRepos.length > 0) {
         reposContainer.appendChild(createRepoSection('Tools', toolRepos));
     }
+
+    requestAnimationFrame(() => {
+        reposContainer.querySelectorAll('.reveal').forEach(el => {
+            el.classList.add('is-visible');
+        });
+    });
 }
 
 function createRepoSection(title, repos) {
     const section = document.createElement('section');
-    section.className = 'repo-section';
+    section.className = 'repo-section reveal';
 
     const heading = document.createElement('h2');
     heading.className = 'repo-section-title';
@@ -638,8 +651,11 @@ function createRepoSection(title, repos) {
 
     const grid = document.createElement('div');
     grid.className = 'repos-grid';
-    repos.forEach(repo => {
-        grid.appendChild(createRepoCard(repo));
+    repos.forEach((repo, index) => {
+        const card = createRepoCard(repo);
+        card.style.setProperty('--reveal-delay', `${Math.min(index * 60, 360)}ms`);
+        card.classList.add('reveal');
+        grid.appendChild(card);
     });
     section.appendChild(grid);
 

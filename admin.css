@@ -3,13 +3,24 @@
 }
 
 .admin-nav a {
-    color: rgba(255, 255, 255, 0.9);
+    color: var(--accent);
     text-decoration: none;
     font-size: 0.95rem;
+    border-bottom: 1px solid transparent;
 }
 
 .admin-nav a:hover {
-    text-decoration: underline;
+    border-bottom-color: var(--accent);
+}
+
+body:has(.admin-main) header {
+    text-align: left;
+}
+
+body:has(.admin-main) header h1 {
+    font-family: var(--font-body);
+    font-size: 1.75rem;
+    font-weight: 600;
 }
 
 .admin-main {
@@ -21,14 +32,17 @@
 .admin-panel {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: var(--radius);
     padding: 1.5rem;
+    box-shadow: var(--shadow);
 }
 
 .admin-panel h2 {
-    font-size: 1.15rem;
+    font-size: 1.05rem;
+    font-weight: 600;
     margin-bottom: 0.75rem;
-    color: var(--primary-color);
+    color: var(--accent);
+    font-family: var(--font-body);
 }
 
 .admin-help {
@@ -41,9 +55,9 @@
 .next-steps code,
 .attention-notes code {
     font-size: 0.85em;
-    background: #f5f5f5;
+    background: var(--paper-deep, #efece7);
     padding: 0.1em 0.35em;
-    border-radius: 3px;
+    border-radius: var(--radius-sm);
 }
 
 .token-row,
@@ -58,24 +72,29 @@
     flex: 1;
     min-width: 200px;
     padding: 0.65rem 0.85rem;
-    border: 2px solid var(--border-color);
-    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
     font-size: 0.95rem;
+    font-family: var(--font-body);
+    background: var(--card-bg);
+    color: var(--text-color);
 }
 
 .admin-input:focus {
     outline: none;
-    border-color: var(--primary-color);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft, rgba(139, 38, 53, 0.08));
 }
 
 .admin-btn {
     padding: 0.65rem 1.1rem;
     border: 1px solid var(--border-color);
-    border-radius: 6px;
-    background: var(--bg-color);
+    border-radius: var(--radius-sm);
+    background: var(--card-bg);
     color: var(--text-color);
     font-size: 0.9rem;
     font-weight: 500;
+    font-family: var(--font-body);
     cursor: pointer;
     display: inline-flex;
     align-items: center;
@@ -83,13 +102,13 @@
 }
 
 .admin-btn:hover {
-    background: #f5f5f5;
+    background: var(--paper-deep, #efece7);
 }
 
 .admin-btn.primary {
-    background: var(--primary-color);
+    background: var(--accent);
     color: white;
-    border-color: var(--primary-color);
+    border-color: var(--accent);
 }
 
 .admin-btn.primary:hover {
@@ -139,16 +158,17 @@
 
 .summary-card {
     border: 1px solid var(--border-color);
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     padding: 0.9rem 0.75rem;
     text-align: center;
+    background: var(--card-bg);
 }
 
 .summary-card .value {
     display: block;
     font-size: 1.6rem;
     font-weight: 700;
-    color: var(--primary-color);
+    color: var(--accent);
     line-height: 1.2;
 }
 
@@ -209,7 +229,7 @@
 .badge {
     display: inline-block;
     padding: 0.15rem 0.45rem;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     font-size: 0.75rem;
     font-weight: 600;
     white-space: nowrap;
@@ -226,8 +246,13 @@
 }
 
 .badge-course {
-    background: #fef2f2;
-    color: #8B2635;
+    background: var(--accent-soft, rgba(139, 38, 53, 0.08));
+    color: var(--accent);
+}
+
+.badge-event {
+    background: #f3f4f6;
+    color: #1c1917;
 }
 
 .badge-tool {
@@ -274,7 +299,7 @@
 }
 
 .admin-table a {
-    color: var(--primary-color);
+    color: var(--accent);
     text-decoration: none;
 }
 
@@ -302,7 +327,7 @@
     padding: 0.75rem 1rem;
     background: #fff7ed;
     border: 1px solid #fed7aa;
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     font-size: 0.9rem;
 }
 

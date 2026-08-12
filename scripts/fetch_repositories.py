@@ -44,10 +44,11 @@ def load_hidden_repos() -> List[str]:
     return load_custom_descriptions().get('hidden', [])
 
 
-def load_classification_maps() -> Tuple[Dict[str, str], Dict[str, str], Set[str]]:
-    """リポジトリ名 -> 授業/ツール名、および hidden 集合を返す"""
+def load_classification_maps() -> Tuple[Dict[str, str], Dict[str, str], Dict[str, str], Set[str]]:
+    """リポジトリ名 -> 授業/特設/ツール名、および hidden 集合を返す"""
     data = load_custom_descriptions()
     course_map: Dict[str, str] = {}
+    event_map: Dict[str, str] = {}
     tool_map: Dict[str, str] = {}
     hidden = set(data.get('hidden', []))
 
@@ -55,11 +56,15 @@ def load_classification_maps() -> Tuple[Dict[str, str], Dict[str, str], Set[str]
         for repo_name in (course_info.get('repositories') or {}):
             course_map[repo_name] = course_name
 
+    for event_name, event_info in (data.get('events') or {}).items():
+        for repo_name in (event_info.get('repositories') or {}):
+            event_map[repo_name] = event_name
+
     for tool_name, tool_info in (data.get('tools') or {}).items():
         for repo_name in (tool_info.get('repositories') or {}):
             tool_map[repo_name] = tool_name
 
-    return course_map, tool_map, hidden
+    return course_map, event_map, tool_map, hidden
 
 
 def get_headers() -> dict:
@@ -180,7 +185,7 @@ def load_snapshot(path: Path) -> dict:
 
 def print_status_report(live_repos: List[Dict], snapshot: dict) -> None:
     """更新・分類・可視性の状況を表示"""
-    course_map, tool_map, hidden = load_classification_maps()
+    course_map, event_map, tool_map, hidden = load_classification_maps()
     snapshot_map = {r['name']: r for r in snapshot.get('repositories') or []}
     live_names = {r['name'] for r in live_repos}
 
@@ -206,6 +211,8 @@ def print_status_report(live_repos: List[Dict], snapshot: dict) -> None:
             kind = 'hidden'
         elif name in course_map:
             kind = 'course'
+        elif name in event_map:
+            kind = 'event'
         elif name in tool_map:
             kind = 'tool'
         else:
@@ -230,7 +237,7 @@ def print_status_report(live_repos: List[Dict], snapshot: dict) -> None:
     print("\n--- 要対応 ---")
     if unclassified:
         print(f"未分類（公開ページに出ません）: {', '.join(unclassified)}")
-        print("  → custom-descriptions.json の courses / tools に追加")
+        print("  → custom-descriptions.json の courses / events / tools に追加")
     if private_repos:
         names = ', '.join(r['name'] for r in private_repos)
         print(f"Private: {names}")
