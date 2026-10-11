@@ -79,6 +79,13 @@
       "repositories": {
         "EZSignNFC-caption-generator": "展示作品のタイトル・作者などのCSVから、電子ペーパー向けキャプションカードを一覧表示・PNG書き出し"
       }
+    },
+    "HyperPixel 4.0 Square 動画変換": {
+      "summary": "Raspberry Pi用 HyperPixel 4.0 Square 向けに、動画を正方形へ変換するブラウザツール",
+      "tags": ["Webツール", "動画"],
+      "repositories": {
+        "Square-Video-Converter": "ブラウザ上で動画を MP4（H.264・720×720）に変換します。動画はアップロードされません"
+      }
     }
   }
 }
